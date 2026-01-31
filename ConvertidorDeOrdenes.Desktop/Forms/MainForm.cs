@@ -53,7 +53,7 @@ public partial class MainForm : Form
 
         // Menú principal (Empresas)
         var menuStrip = new MenuStrip();
-        menuStrip.BackColor = Color.FromArgb(0, 120, 215);
+        menuStrip.BackColor = Color.FromArgb(70, 130, 180);
         menuStrip.ForeColor = Color.White;
         menuStrip.Font = new Font("Segoe UI", 9, FontStyle.Bold);
         
@@ -83,33 +83,34 @@ public partial class MainForm : Form
         var lblTitulo = new Label
         {
             Text = "📂 Procesamiento de Órdenes Médicas",
-            Font = new Font("Segoe UI", 14, FontStyle.Bold),
-            ForeColor = Color.FromArgb(0, 120, 215),
-            Location = new Point(25, 38),
-            Size = new Size(600, 28)
+            Font = new Font("Segoe UI", 13, FontStyle.Bold),
+            ForeColor = Color.FromArgb(50, 50, 50),
+            Location = new Point(25, 40),
+            Size = new Size(600, 30)
         };
 
         var lblSubtitulo = new Label
         {
             Text = "Analice archivos de órdenes, verifique los datos y exporte al formato requerido",
             Font = new Font("Segoe UI", 9, FontStyle.Regular),
-            ForeColor = Color.FromArgb(100, 100, 100),
-            Location = new Point(25, 66),
-            Size = new Size(900, 18)
+            ForeColor = Color.FromArgb(90, 90, 90),
+            Location = new Point(25, 72),
+            Size = new Size(900, 20)
         };
 
         // Archivo
         lblArchivo = new Label
         {
             Text = "📄 Archivo de entrada:",
-            Font = new Font("Segoe UI", 10, FontStyle.Bold),
-            Location = new Point(25, 100),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            ForeColor = Color.FromArgb(60, 60, 60),
+            Location = new Point(25, 108),
             Size = new Size(170, 24)
         };
 
         txtArchivo = new TextBox
         {
-            Location = new Point(200, 97),
+            Location = new Point(200, 105),
             Size = new Size(745, 28),
             ReadOnly = true,
             Font = new Font("Segoe UI", 9),
@@ -119,10 +120,10 @@ public partial class MainForm : Form
         btnSeleccionar = new Button
         {
             Text = "📁 Elegir archivo...",
-            Location = new Point(955, 95),
+            Location = new Point(955, 103),
             Size = new Size(140, 35),
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
-            BackColor = Color.FromArgb(0, 120, 215),
+            BackColor = Color.FromArgb(70, 130, 180),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
             Cursor = Cursors.Hand
@@ -133,11 +134,11 @@ public partial class MainForm : Form
         btnAnalizar = new Button
         {
             Text = "▶ Analizar",
-            Location = new Point(1105, 95),
+            Location = new Point(1105, 103),
             Size = new Size(100, 35),
             Enabled = false,
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
-            BackColor = Color.FromArgb(16, 124, 16),
+            BackColor = Color.FromArgb(60, 140, 60),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
             Cursor = Cursors.Hand
@@ -148,8 +149,8 @@ public partial class MainForm : Form
         // DataGridView
         dgvPreview = new DataGridView
         {
-            Location = new Point(25, 145),
-            Size = new Size(1180, 375),
+            Location = new Point(25, 155),
+            Size = new Size(1180, 365),
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,
             ReadOnly = true,
@@ -159,7 +160,7 @@ public partial class MainForm : Form
             BorderStyle = BorderStyle.None,
             ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
-                BackColor = Color.FromArgb(0, 120, 215),
+                BackColor = Color.FromArgb(70, 130, 180),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 Padding = new Padding(5)
@@ -220,7 +221,7 @@ public partial class MainForm : Form
             Size = new Size(145, 40),
             Enabled = false,
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
-            BackColor = Color.FromArgb(16, 124, 16),
+            BackColor = Color.FromArgb(60, 140, 60),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
             Cursor = Cursors.Hand
@@ -551,9 +552,9 @@ public partial class MainForm : Form
                    $"❌ Errores: {errors.Count}";
 
         lblEstadisticas.Text = stats;
-        lblEstadisticas.ForeColor = errors.Count > 0 ? Color.FromArgb(200, 50, 50) : 
-                                    warnings.Count > 0 ? Color.FromArgb(200, 140, 0) : 
-                                    Color.FromArgb(16, 124, 16);
+        lblEstadisticas.ForeColor = errors.Count > 0 ? Color.FromArgb(180, 60, 60) : 
+                                    warnings.Count > 0 ? Color.FromArgb(180, 120, 0) : 
+                                    Color.FromArgb(60, 140, 60);
 
         foreach (var warning in warnings)
         {
