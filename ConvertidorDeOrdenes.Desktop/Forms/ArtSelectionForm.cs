@@ -33,8 +33,8 @@ public sealed class ArtSelectionForm : Form
         var lblTitulo = new Label
         {
             Text = "🏥 Seleccione la ART",
-            Font = new Font("Segoe UI", 16, FontStyle.Bold),
-            ForeColor = Color.FromArgb(0, 120, 215),
+            Font = new Font("Segoe UI", 14, FontStyle.Bold),
+            ForeColor = Color.FromArgb(50, 50, 50),
             Location = new Point(30, 25),
             Size = new Size(440, 35)
         };
@@ -43,7 +43,7 @@ public sealed class ArtSelectionForm : Form
         {
             Text = "Elija la Aseguradora de Riesgos del Trabajo para configurar el procesamiento",
             Font = new Font("Segoe UI", 9, FontStyle.Regular),
-            ForeColor = Color.FromArgb(100, 100, 100),
+            ForeColor = Color.FromArgb(90, 90, 90),
             Location = new Point(30, 62),
             Size = new Size(440, 18)
         };
@@ -75,7 +75,7 @@ public sealed class ArtSelectionForm : Form
             Size = new Size(110, 40),
             DialogResult = DialogResult.OK,
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
-            BackColor = Color.FromArgb(0, 120, 215),
+            BackColor = Color.FromArgb(70, 130, 180),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
             Cursor = Cursors.Hand

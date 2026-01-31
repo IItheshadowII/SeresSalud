@@ -47,8 +47,8 @@ public partial class CompanyEditDialog : Form
         var lblTitulo = new Label
         {
             Text = "🏢 Datos de Empresa",
-            Font = new Font("Segoe UI", 14, FontStyle.Bold),
-            ForeColor = Color.FromArgb(0, 120, 215),
+            Font = new Font("Segoe UI", 13, FontStyle.Bold),
+            ForeColor = Color.FromArgb(50, 50, 50),
             Location = new Point(25, 15),
             Size = new Size(480, 30)
         };
@@ -57,7 +57,7 @@ public partial class CompanyEditDialog : Form
         {
             Text = "Complete la información de la empresa. Los campos marcados con * son obligatorios.",
             Font = new Font("Segoe UI", 9, FontStyle.Italic),
-            ForeColor = Color.FromArgb(100, 100, 100),
+            ForeColor = Color.FromArgb(90, 90, 90),
             Location = new Point(25, 45),
             Size = new Size(480, 20)
         };
@@ -128,7 +128,7 @@ public partial class CompanyEditDialog : Form
             Size = new Size(110, 38),
             DialogResult = DialogResult.OK,
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
-            BackColor = Color.FromArgb(0, 120, 215),
+            BackColor = Color.FromArgb(70, 130, 180),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
             Cursor = Cursors.Hand
@@ -259,7 +259,7 @@ public partial class CompanySelectDialog : Form
         {
             Text = "🔎 Se encontraron múltiples empresas coincidentes",
             Font = new Font("Segoe UI", 11, FontStyle.Bold),
-            ForeColor = Color.FromArgb(0, 120, 215),
+            ForeColor = Color.FromArgb(50, 50, 50),
             Location = new Point(25, 15),
             Size = new Size(620, 26)
         };
@@ -268,7 +268,7 @@ public partial class CompanySelectDialog : Form
         {
             Text = "Seleccione la empresa correcta o cree una nueva. Use el buscador para filtrar resultados.",
             Font = new Font("Segoe UI", 9, FontStyle.Regular),
-            ForeColor = Color.FromArgb(100, 100, 100),
+            ForeColor = Color.FromArgb(90, 90, 90),
             Location = new Point(25, 41),
             Size = new Size(620, 18)
         };
@@ -298,7 +298,7 @@ public partial class CompanySelectDialog : Form
             Location = new Point(135, 390),
             Size = new Size(110, 38),
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
-            BackColor = Color.FromArgb(0, 120, 215),
+            BackColor = Color.FromArgb(70, 130, 180),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
             Cursor = Cursors.Hand
@@ -312,7 +312,7 @@ public partial class CompanySelectDialog : Form
             Location = new Point(255, 390),
             Size = new Size(110, 38),
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
-            BackColor = Color.FromArgb(200, 50, 50),
+            BackColor = Color.FromArgb(180, 60, 60),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
             Cursor = Cursors.Hand
@@ -326,7 +326,7 @@ public partial class CompanySelectDialog : Form
             Location = new Point(375, 390),
             Size = new Size(110, 38),
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
-            BackColor = Color.FromArgb(16, 124, 16),
+            BackColor = Color.FromArgb(60, 140, 60),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
             Cursor = Cursors.Hand

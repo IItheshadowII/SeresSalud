@@ -47,8 +47,8 @@ public partial class WizardForm : Form
         lblTitulo = new Label
         {
             Text = "⚙️ Configuración de Nueva Conversión",
-            Font = new Font("Segoe UI", 16, FontStyle.Bold),
-            ForeColor = Color.FromArgb(0, 120, 215),
+            Font = new Font("Segoe UI", 14, FontStyle.Bold),
+            ForeColor = Color.FromArgb(50, 50, 50),
             Location = new Point(30, 25),
             Size = new Size(520, 35)
         };
@@ -57,7 +57,7 @@ public partial class WizardForm : Form
         {
             Text = "Configure los parámetros de procesamiento según el tipo de archivo que desea convertir",
             Font = new Font("Segoe UI", 9, FontStyle.Regular),
-            ForeColor = Color.FromArgb(100, 100, 100),
+            ForeColor = Color.FromArgb(90, 90, 90),
             Location = new Point(30, 62),
             Size = new Size(520, 18)
         };
@@ -116,7 +116,7 @@ public partial class WizardForm : Form
             Size = new Size(110, 40),
             DialogResult = DialogResult.OK,
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
-            BackColor = Color.FromArgb(0, 120, 215),
+            BackColor = Color.FromArgb(70, 130, 180),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
             Cursor = Cursors.Hand

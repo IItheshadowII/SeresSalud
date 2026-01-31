@@ -40,8 +40,8 @@ public sealed class CompanyListForm : Form
         var lblTitulo = new Label
         {
             Text = "🏢 Administración de Empresas",
-            Font = new Font("Segoe UI", 14, FontStyle.Bold),
-            ForeColor = Color.FromArgb(0, 120, 215),
+            Font = new Font("Segoe UI", 13, FontStyle.Bold),
+            ForeColor = Color.FromArgb(50, 50, 50),
             Location = new Point(25, 15),
             Size = new Size(500, 30)
         };
@@ -50,7 +50,7 @@ public sealed class CompanyListForm : Form
         {
             Text = "Gestione la base de datos de empresas (Empresas.xlsx). Agregue, edite o elimine registros.",
             Font = new Font("Segoe UI", 9, FontStyle.Regular),
-            ForeColor = Color.FromArgb(100, 100, 100),
+            ForeColor = Color.FromArgb(90, 90, 90),
             Location = new Point(25, 45),
             Size = new Size(900, 18)
         };
@@ -77,7 +77,7 @@ public sealed class CompanyListForm : Form
             BorderStyle = BorderStyle.None,
             ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
-                BackColor = Color.FromArgb(0, 120, 215),
+                BackColor = Color.FromArgb(70, 130, 180),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 9, FontStyle.Bold)
             }
@@ -96,7 +96,7 @@ public sealed class CompanyListForm : Form
             Location = new Point(25, 15),
             Size = new Size(110, 38),
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
-            BackColor = Color.FromArgb(16, 124, 16),
+            BackColor = Color.FromArgb(60, 140, 60),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
             Cursor = Cursors.Hand
@@ -110,7 +110,7 @@ public sealed class CompanyListForm : Form
             Location = new Point(145, 15),
             Size = new Size(110, 38),
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
-            BackColor = Color.FromArgb(0, 120, 215),
+            BackColor = Color.FromArgb(70, 130, 180),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
             Cursor = Cursors.Hand
