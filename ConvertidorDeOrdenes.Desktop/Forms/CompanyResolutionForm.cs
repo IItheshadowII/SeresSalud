@@ -28,17 +28,29 @@ public class CompanyResolutionForm : Form
     private void InitializeComponent()
     {
         Text = "Revisión de datos de empresas";
-        Size = new Size(1000, 600);
+        Size = new Size(1100, 650);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         ControlBox = false;
         FormClosing += CompanyResolutionForm_FormClosing;
+        BackColor = Color.WhiteSmoke;
+
+        var lblTitulo = new Label
+        {
+            Text = "Revisión de datos de empresas",
+            Font = new Font("Segoe UI", 14, FontStyle.Bold),
+            ForeColor = Color.FromArgb(0, 120, 215),
+            Location = new Point(25, 15),
+            Size = new Size(1000, 30)
+        };
+        this.Controls.Add(lblTitulo);
 
         _dgvEmpresas = new DataGridView
         {
-            Dock = DockStyle.Fill,
+            Location = new Point(25, 55),
+            Size = new Size(1040, 490),
             AutoGenerateColumns = false,
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,
@@ -46,7 +58,20 @@ public class CompanyResolutionForm : Form
             MultiSelect = false,
             EditMode = DataGridViewEditMode.EditOnEnter,
             ScrollBars = ScrollBars.Both,
-            AllowUserToOrderColumns = true
+            AllowUserToOrderColumns = true,
+            BackgroundColor = Color.White,
+            BorderStyle = BorderStyle.None,
+            ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = Color.FromArgb(0, 120, 215),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                Padding = new Padding(5)
+            },
+            AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = Color.FromArgb(245, 245, 245)
+            }
         };
 
         _dgvEmpresas.Columns.Add(new DataGridViewTextBoxColumn
@@ -223,32 +248,51 @@ public class CompanyResolutionForm : Form
         var bottomPanel = new Panel
         {
             Dock = DockStyle.Bottom,
-            Height = 70
+            Height = 80,
+            BackColor = Color.WhiteSmoke
         };
 
         _btnBuscarBase = new Button
         {
             Text = "Buscar en Empresas.xlsx",
-            Location = new Point(20, 18),
-            Size = new Size(180, 35)
+            Location = new Point(25, 20),
+            Size = new Size(200, 40),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            BackColor = Color.FromArgb(0, 120, 215),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        _btnBuscarBase.FlatAppearance.BorderSize = 0;
         _btnBuscarBase.Click += BtnBuscarBase_Click;
 
         _btnEditarEmpresa = new Button
         {
             Text = "Editar/Crear empresa",
-            Location = new Point(210, 18),
-            Size = new Size(160, 35)
+            Location = new Point(235, 20),
+            Size = new Size(180, 40),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            BackColor = Color.FromArgb(16, 124, 16),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        _btnEditarEmpresa.FlatAppearance.BorderSize = 0;
         _btnEditarEmpresa.Click += BtnEditarEmpresa_Click;
 
         _btnCerrar = new Button
         {
             Text = "Aceptar",
             Anchor = AnchorStyles.Top | AnchorStyles.Left,
-            Location = new Point(390, 18),
-            Size = new Size(150, 35)
+            Location = new Point(865, 20),
+            Size = new Size(200, 40),
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            BackColor = Color.FromArgb(16, 124, 16),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        _btnCerrar.FlatAppearance.BorderSize = 0;
         _btnCerrar.Click += (_, _) => { _allowClose = true; DialogResult = DialogResult.OK; Close(); };
 
         bottomPanel.Controls.Add(_btnBuscarBase);

@@ -34,36 +34,40 @@ public partial class WizardForm : Form
     private void InitializeComponent()
     {
         this.Text = "ConvertidorDeOrdenes - Configuración Inicial";
-        this.Size = new Size(500, 360);
+        this.Size = new Size(580, 420);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
         this.MaximizeBox = false;
         this.MinimizeBox = false;
         this.ControlBox = false;
         this.FormClosing += WizardForm_FormClosing;
+        this.BackColor = Color.WhiteSmoke;
 
         // Título
         lblTitulo = new Label
         {
             Text = "Configuración de Nueva Conversión",
-            Font = new Font("Segoe UI", 14, FontStyle.Bold),
-            Location = new Point(20, 20),
-            Size = new Size(450, 30)
+            Font = new Font("Segoe UI", 16, FontStyle.Bold),
+            ForeColor = Color.FromArgb(0, 120, 215),
+            Location = new Point(30, 25),
+            Size = new Size(520, 35)
         };
 
         // Tipo de carga
         lblTipoCarga = new Label
         {
             Text = "Seleccione el tipo de carga:",
-            Location = new Point(20, 70),
-            Size = new Size(450, 20)
+            Font = new Font("Segoe UI", 10, FontStyle.Regular),
+            Location = new Point(30, 80),
+            Size = new Size(520, 24)
         };
 
         rbAnualesSemestrales = new RadioButton
         {
             Text = "Anuales/Semestrales (XLSX con múltiples solapas)",
-            Location = new Point(40, 95),
-            Size = new Size(400, 25),
+            Font = new Font("Segoe UI", 10),
+            Location = new Point(50, 110),
+            Size = new Size(480, 28),
             Checked = true
         };
         rbAnualesSemestrales.CheckedChanged += Radio_CheckedChanged;
@@ -71,8 +75,9 @@ public partial class WizardForm : Form
         rbReconfirmatorios = new RadioButton
         {
             Text = "Reconfirmatorios/Reevaluaciones (CSV)",
-            Location = new Point(40, 125),
-            Size = new Size(400, 25)
+            Font = new Font("Segoe UI", 10),
+            Location = new Point(50, 145),
+            Size = new Size(480, 28)
         };
         rbReconfirmatorios.CheckedChanged += Radio_CheckedChanged;
 
@@ -80,15 +85,17 @@ public partial class WizardForm : Form
         lblFrecuencia = new Label
         {
             Text = "Frecuencia (obligatorio):",
-            Location = new Point(20, 165),
-            Size = new Size(450, 20)
+            Font = new Font("Segoe UI", 10, FontStyle.Regular),
+            Location = new Point(30, 195),
+            Size = new Size(520, 24)
         };
 
         cbFrecuencia = new ComboBox
         {
-            Location = new Point(40, 190),
-            Size = new Size(200, 25),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            Location = new Point(50, 225),
+            Size = new Size(280, 28),
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Font = new Font("Segoe UI", 10)
         };
         PopulateFrecuencias();
 
@@ -96,19 +103,31 @@ public partial class WizardForm : Form
         btnSiguiente = new Button
         {
             Text = "Siguiente",
-            Location = new Point(260, 280),
-            Size = new Size(90, 30),
-            DialogResult = DialogResult.OK
+            Location = new Point(330, 320),
+            Size = new Size(110, 40),
+            DialogResult = DialogResult.OK,
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            BackColor = Color.FromArgb(0, 120, 215),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        btnSiguiente.FlatAppearance.BorderSize = 0;
         btnSiguiente.Click += BtnSiguiente_Click;
 
         btnCancelar = new Button
         {
             Text = "Cancelar",
-            Location = new Point(360, 280),
-            Size = new Size(90, 30),
-            DialogResult = DialogResult.Cancel
+            Location = new Point(450, 320),
+            Size = new Size(100, 40),
+            DialogResult = DialogResult.Cancel,
+            Font = new Font("Segoe UI", 10),
+            BackColor = Color.White,
+            ForeColor = Color.FromArgb(100, 100, 100),
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        btnCancelar.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200);
         btnCancelar.Click += (_, _) => { _allowClose = true; Close(); };
 
         // Agregar controles

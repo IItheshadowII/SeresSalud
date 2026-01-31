@@ -47,12 +47,19 @@ public partial class MainForm : Form
     private void InitializeComponent()
     {
         this.Text = "ConvertidorDeOrdenes - Procesamiento";
-        this.Size = new Size(1200, 700);
+        this.Size = new Size(1250, 750);
         this.StartPosition = FormStartPosition.CenterScreen;
+        this.BackColor = Color.WhiteSmoke;
 
         // Menú principal (Empresas)
         var menuStrip = new MenuStrip();
+        menuStrip.BackColor = Color.FromArgb(0, 120, 215);
+        menuStrip.ForeColor = Color.White;
+        menuStrip.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+        
         var empresasMenu = new ToolStripMenuItem("Empresas");
+        empresasMenu.ForeColor = Color.White;
+        
         var administrarEmpresasItem = new ToolStripMenuItem("Administrar...");
         administrarEmpresasItem.Click += (_, _) =>
         {
@@ -76,80 +83,125 @@ public partial class MainForm : Form
         lblArchivo = new Label
         {
             Text = "Archivo de entrada:",
-            Location = new Point(20, 20),
-            Size = new Size(120, 20)
+            Font = new Font("Segoe UI", 10, FontStyle.Regular),
+            Location = new Point(25, 45),
+            Size = new Size(140, 24)
         };
 
         txtArchivo = new TextBox
         {
-            Location = new Point(140, 17),
-            Size = new Size(700, 25),
-            ReadOnly = true
+            Location = new Point(165, 42),
+            Size = new Size(780, 28),
+            ReadOnly = true,
+            Font = new Font("Segoe UI", 9),
+            BackColor = Color.White
         };
 
         btnSeleccionar = new Button
         {
             Text = "Elegir archivo...",
-            Location = new Point(850, 15),
-            Size = new Size(120, 30)
+            Location = new Point(955, 40),
+            Size = new Size(130, 35),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            BackColor = Color.FromArgb(0, 120, 215),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        btnSeleccionar.FlatAppearance.BorderSize = 0;
         btnSeleccionar.Click += BtnSeleccionar_Click;
 
         btnAnalizar = new Button
         {
             Text = "Analizar",
-            Location = new Point(980, 15),
-            Size = new Size(90, 30),
-            Enabled = false
+            Location = new Point(1095, 40),
+            Size = new Size(110, 35),
+            Enabled = false,
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            BackColor = Color.FromArgb(16, 124, 16),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        btnAnalizar.FlatAppearance.BorderSize = 0;
         btnAnalizar.Click += BtnAnalizar_Click;
 
         // DataGridView
         dgvPreview = new DataGridView
         {
-            Location = new Point(20, 60),
-            Size = new Size(1150, 400),
+            Location = new Point(25, 90),
+            Size = new Size(1180, 430),
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,
             ReadOnly = true,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            BackgroundColor = Color.White,
+            BorderStyle = BorderStyle.None,
+            ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = Color.FromArgb(0, 120, 215),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                Padding = new Padding(5)
+            },
+            AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = Color.FromArgb(245, 245, 245)
+            }
         };
 
         // Estadísticas
         lblEstadisticas = new Label
         {
-            Location = new Point(20, 470),
-            Size = new Size(1150, 20),
-            Text = "Seleccione un archivo y pulse 'Analizar'"
+            Location = new Point(25, 535),
+            Size = new Size(1180, 24),
+            Text = "Seleccione un archivo y pulse 'Analizar'",
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            ForeColor = Color.FromArgb(80, 80, 80)
         };
 
         // Log
         txtLog = new TextBox
         {
-            Location = new Point(20, 500),
-            Size = new Size(1150, 100),
+            Location = new Point(25, 570),
+            Size = new Size(1180, 70),
             Multiline = true,
             ScrollBars = ScrollBars.Vertical,
-            ReadOnly = true
+            ReadOnly = true,
+            Font = new Font("Consolas", 8),
+            BackColor = Color.FromArgb(240, 240, 240),
+            BorderStyle = BorderStyle.FixedSingle
         };
 
         // Botones
         btnExportar = new Button
         {
             Text = "Exportar XLS",
-            Location = new Point(980, 620),
-            Size = new Size(100, 35),
-            Enabled = false
+            Location = new Point(1060, 650),
+            Size = new Size(145, 40),
+            Enabled = false,
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            BackColor = Color.FromArgb(16, 124, 16),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        btnExportar.FlatAppearance.BorderSize = 0;
         btnExportar.Click += BtnExportar_Click;
 
         btnNuevo = new Button
         {
             Text = "Nueva Conversión",
-            Location = new Point(850, 620),
-            Size = new Size(120, 35)
+            Location = new Point(900, 650),
+            Size = new Size(150, 40),
+            Font = new Font("Segoe UI", 9),
+            BackColor = Color.White,
+            ForeColor = Color.FromArgb(100, 100, 100),
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        btnNuevo.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200);
         btnNuevo.Click += BtnNuevo_Click;
 
         this.Controls.Add(lblArchivo);

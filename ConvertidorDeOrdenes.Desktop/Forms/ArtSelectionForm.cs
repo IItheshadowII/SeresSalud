@@ -21,34 +21,38 @@ public sealed class ArtSelectionForm : Form
     private void InitializeComponent()
     {
         Text = "ConvertidorDeOrdenes - Selección de ART";
-        Size = new Size(420, 220);
+        Size = new Size(500, 280);
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         ControlBox = false;
         FormClosing += ArtSelectionForm_FormClosing;
+        BackColor = Color.WhiteSmoke;
 
         var lblTitulo = new Label
         {
             Text = "Seleccione la ART",
-            Font = new Font("Segoe UI", 14, FontStyle.Bold),
-            Location = new Point(20, 20),
-            Size = new Size(360, 30)
+            Font = new Font("Segoe UI", 16, FontStyle.Bold),
+            ForeColor = Color.FromArgb(0, 120, 215),
+            Location = new Point(30, 25),
+            Size = new Size(440, 35)
         };
 
         var lblArt = new Label
         {
             Text = "ART (obligatorio):",
-            Location = new Point(20, 70),
-            Size = new Size(360, 20)
+            Font = new Font("Segoe UI", 10, FontStyle.Regular),
+            Location = new Point(30, 85),
+            Size = new Size(440, 22)
         };
 
         _cbArt = new ComboBox
         {
-            Location = new Point(20, 95),
-            Size = new Size(260, 25),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            Location = new Point(30, 110),
+            Size = new Size(340, 28),
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Font = new Font("Segoe UI", 10)
         };
 
         // Para futuro: agregar más ARTs acá.
@@ -58,19 +62,31 @@ public sealed class ArtSelectionForm : Form
         _btnSiguiente = new Button
         {
             Text = "Siguiente",
-            Location = new Point(200, 140),
-            Size = new Size(90, 30),
-            DialogResult = DialogResult.OK
+            Location = new Point(250, 180),
+            Size = new Size(110, 40),
+            DialogResult = DialogResult.OK,
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            BackColor = Color.FromArgb(0, 120, 215),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        _btnSiguiente.FlatAppearance.BorderSize = 0;
         _btnSiguiente.Click += BtnSiguiente_Click;
 
         _btnCancelar = new Button
         {
             Text = "Cancelar",
-            Location = new Point(300, 140),
-            Size = new Size(90, 30),
-            DialogResult = DialogResult.Cancel
+            Location = new Point(370, 180),
+            Size = new Size(100, 40),
+            DialogResult = DialogResult.Cancel,
+            Font = new Font("Segoe UI", 10),
+            BackColor = Color.White,
+            ForeColor = Color.FromArgb(100, 100, 100),
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        _btnCancelar.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200);
         _btnCancelar.Click += (_, _) => { _allowClose = true; Close(); };
 
         Controls.Add(lblTitulo);

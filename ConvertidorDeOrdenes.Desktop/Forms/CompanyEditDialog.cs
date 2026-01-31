@@ -37,16 +37,27 @@ public partial class CompanyEditDialog : Form
     private void InitializeComponent()
     {
         this.Text = "Datos de Empresa";
-        this.Size = new Size(500, 500);
+        this.Size = new Size(550, 560);
         this.StartPosition = FormStartPosition.CenterParent;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
         this.MaximizeBox = false;
         this.MinimizeBox = false;
+        this.BackColor = Color.WhiteSmoke;
 
-        int y = 20;
-        int labelWidth = 120;
-        int textBoxWidth = 300;
-        int spacing = 35;
+        var lblTitulo = new Label
+        {
+            Text = "Datos de Empresa",
+            Font = new Font("Segoe UI", 14, FontStyle.Bold),
+            ForeColor = Color.FromArgb(0, 120, 215),
+            Location = new Point(25, 15),
+            Size = new Size(480, 30)
+        };
+        this.Controls.Add(lblTitulo);
+
+        int y = 60;
+        int labelWidth = 130;
+        int textBoxWidth = 340;
+        int spacing = 42;
 
         // CUIT
         AddField("CUIT:", ref txtCUIT, y, labelWidth, textBoxWidth);
@@ -92,19 +103,31 @@ public partial class CompanyEditDialog : Form
         btnGuardar = new Button
         {
             Text = "Guardar",
-            Location = new Point(200, y),
-            Size = new Size(90, 30),
-            DialogResult = DialogResult.OK
+            Location = new Point(240, y),
+            Size = new Size(110, 38),
+            DialogResult = DialogResult.OK,
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            BackColor = Color.FromArgb(0, 120, 215),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        btnGuardar.FlatAppearance.BorderSize = 0;
         btnGuardar.Click += BtnGuardar_Click;
 
         btnCancelar = new Button
         {
             Text = "Cancelar",
-            Location = new Point(300, y),
-            Size = new Size(90, 30),
-            DialogResult = DialogResult.Cancel
+            Location = new Point(360, y),
+            Size = new Size(110, 38),
+            DialogResult = DialogResult.Cancel,
+            Font = new Font("Segoe UI", 10),
+            BackColor = Color.White,
+            ForeColor = Color.FromArgb(100, 100, 100),
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        btnCancelar.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200);
 
         this.Controls.Add(btnGuardar);
         this.Controls.Add(btnCancelar);
@@ -118,14 +141,16 @@ public partial class CompanyEditDialog : Form
         var label = new Label
         {
             Text = labelText,
-            Location = new Point(20, y + 3),
-            Size = new Size(labelWidth, 20)
+            Font = new Font("Segoe UI", 9, FontStyle.Regular),
+            Location = new Point(25, y + 3),
+            Size = new Size(labelWidth, 22)
         };
 
         textBox = new TextBox
         {
-            Location = new Point(140, y),
-            Size = new Size(textBoxWidth, 25)
+            Location = new Point(160, y),
+            Size = new Size(textBoxWidth, 28),
+            Font = new Font("Segoe UI", 9)
         };
 
         this.Controls.Add(label);
@@ -202,65 +227,96 @@ public partial class CompanySelectDialog : Form
     private void InitializeComponent()
     {
         this.Text = "Seleccionar Empresa";
-        this.Size = new Size(600, 400);
+        this.Size = new Size(680, 480);
         this.StartPosition = FormStartPosition.CenterParent;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
         this.MaximizeBox = false;
         this.MinimizeBox = false;
+        this.BackColor = Color.WhiteSmoke;
 
         var lblInstrucciones = new Label
         {
             Text = "Se encontraron múltiples empresas. Seleccione una:",
-            Location = new Point(20, 20),
-            Size = new Size(550, 20)
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            ForeColor = Color.FromArgb(0, 120, 215),
+            Location = new Point(25, 20),
+            Size = new Size(620, 24)
         };
 
         txtBuscar = new TextBox
         {
-            PlaceholderText = "Buscar por CUIT, nombre o localidad...",
-            Location = new Point(20, 45),
-            Size = new Size(550, 23)
+            PlaceholderText = "🔍 Buscar por CUIT, nombre o localidad...",
+            Font = new Font("Segoe UI", 10),
+            Location = new Point(25, 50),
+            Size = new Size(620, 28)
         };
         txtBuscar.TextChanged += (_, _) => ApplyFilter();
 
         lstCompanies = new ListBox
         {
-            Location = new Point(20, 75),
-            Size = new Size(550, 230)
+            Location = new Point(25, 90),
+            Size = new Size(620, 280),
+            Font = new Font("Segoe UI", 9),
+            BackColor = Color.White,
+            BorderStyle = BorderStyle.FixedSingle
         };
         lstCompanies.DoubleClick += (s, e) => BtnSeleccionar_Click(s, e);
 
         btnSeleccionar = new Button
         {
             Text = "Seleccionar",
-            Location = new Point(200, 320),
-            Size = new Size(90, 30)
+            Location = new Point(135, 390),
+            Size = new Size(110, 38),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            BackColor = Color.FromArgb(0, 120, 215),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        btnSeleccionar.FlatAppearance.BorderSize = 0;
         btnSeleccionar.Click += BtnSeleccionar_Click;
 
         var btnEliminar = new Button
         {
             Text = "Eliminar",
-            Location = new Point(300, 320),
-            Size = new Size(90, 30)
+            Location = new Point(255, 390),
+            Size = new Size(110, 38),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            BackColor = Color.FromArgb(200, 50, 50),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        btnEliminar.FlatAppearance.BorderSize = 0;
         btnEliminar.Click += BtnEliminar_Click;
 
         btnNuevo = new Button
         {
             Text = "Crear Nuevo",
-            Location = new Point(400, 320),
-            Size = new Size(90, 30)
+            Location = new Point(375, 390),
+            Size = new Size(110, 38),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            BackColor = Color.FromArgb(16, 124, 16),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        btnNuevo.FlatAppearance.BorderSize = 0;
         btnNuevo.Click += BtnNuevo_Click;
 
         btnCancelar = new Button
         {
             Text = "Cancelar",
-            Location = new Point(500, 320),
-            Size = new Size(90, 30),
+            Location = new Point(535, 390),
+            Size = new Size(110, 38),
+            Font = new Font("Segoe UI", 9),
+            BackColor = Color.White,
+            ForeColor = Color.FromArgb(100, 100, 100),
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand,
             DialogResult = DialogResult.Cancel
         };
+        btnCancelar.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200);
 
         this.Controls.Add(lblInstrucciones);
         this.Controls.Add(txtBuscar);

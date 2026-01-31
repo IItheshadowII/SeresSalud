@@ -29,74 +29,119 @@ public sealed class CompanyListForm : Form
 
     private void InitializeComponent()
     {
-        Text = "Empresas (Empresas.xlsx)";
-        Size = new Size(900, 500);
+        Text = "Administración de Empresas";
+        Size = new Size(980, 580);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
+        BackColor = Color.WhiteSmoke;
+
+        var lblTitulo = new Label
+        {
+            Text = "Empresas (Empresas.xlsx)",
+            Font = new Font("Segoe UI", 14, FontStyle.Bold),
+            ForeColor = Color.FromArgb(0, 120, 215),
+            Location = new Point(25, 15),
+            Size = new Size(400, 30)
+        };
 
         _txtBuscar = new TextBox
         {
-            Location = new Point(20, 15),
-            Size = new Size(500, 23),
-            PlaceholderText = "Buscar por CUIT, nombre o localidad..."
+            Location = new Point(25, 55),
+            Size = new Size(600, 28),
+            Font = new Font("Segoe UI", 10),
+            PlaceholderText = "🔍 Buscar por CUIT, nombre o localidad..."
         };
         _txtBuscar.TextChanged += (_, _) => ApplyFilter();
 
         _dgv = new DataGridView
         {
-            Location = new Point(20, 45),
-            Size = new Size(840, 360),
+            Location = new Point(25, 95),
+            Size = new Size(920, 380),
             AutoGenerateColumns = true,
             ReadOnly = true,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             AllowUserToAddRows = false,
-            AllowUserToDeleteRows = false
+            AllowUserToDeleteRows = false,
+            BackgroundColor = Color.White,
+            BorderStyle = BorderStyle.None,
+            ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = Color.FromArgb(0, 120, 215),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold)
+            }
         };
 
         var bottomPanel = new Panel
         {
             Dock = DockStyle.Bottom,
-            Height = 60
+            Height = 70,
+            BackColor = Color.WhiteSmoke
         };
 
         _btnAgregar = new Button
         {
             Text = "Agregar",
-            Location = new Point(20, 15),
-            Size = new Size(100, 30)
+            Location = new Point(25, 15),
+            Size = new Size(110, 38),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            BackColor = Color.FromArgb(16, 124, 16),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        _btnAgregar.FlatAppearance.BorderSize = 0;
         _btnAgregar.Click += BtnAgregar_Click;
 
         _btnEditar = new Button
         {
             Text = "Editar",
-            Location = new Point(130, 15),
-            Size = new Size(100, 30)
+            Location = new Point(145, 15),
+            Size = new Size(110, 38),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            BackColor = Color.FromArgb(0, 120, 215),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        _btnEditar.FlatAppearance.BorderSize = 0;
         _btnEditar.Click += BtnEditar_Click;
 
         _btnEliminar = new Button
         {
             Text = "Eliminar",
-            Location = new Point(240, 15),
-            Size = new Size(100, 30)
+            Location = new Point(265, 15),
+            Size = new Size(110, 38),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            BackColor = Color.FromArgb(200, 50, 50),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        _btnEliminar.FlatAppearance.BorderSize = 0;
         _btnEliminar.Click += BtnEliminar_Click;
 
         _btnCerrar = new Button
         {
             Text = "Cerrar",
-            Location = new Point(760, 15),
-            Size = new Size(100, 30)
+            Location = new Point(835, 15),
+            Size = new Size(110, 38),
+            Font = new Font("Segoe UI", 9),
+            BackColor = Color.White,
+            ForeColor = Color.FromArgb(100, 100, 100),
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
+        _btnCerrar.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200);
         _btnCerrar.Click += (_, _) => Close();
 
         bottomPanel.Controls.Add(_btnAgregar);
         bottomPanel.Controls.Add(_btnEditar);
         bottomPanel.Controls.Add(_btnEliminar);
         bottomPanel.Controls.Add(_btnCerrar);
+        Controls.Add(lblTitulo);
         Controls.Add(_txtBuscar);
         Controls.Add(_dgv);
         Controls.Add(bottomPanel);
