@@ -1,303 +1,778 @@
-# ConvertidorDeOrdenes
+# 🏥 ConvertidorDeOrdenes - Seres Salud
 
-Software de escritorio portable para Windows que convierte planillas médicas (XLSX o CSV) a formato XLS (Excel 97-2003) con modelo de salida fijo de 24 columnas (A-X).
+<div align="center">
 
-## Requisitos
+**Sistema profesional de conversión y gestión de órdenes médicas**
 
-- **Windows 10 o superior**
-- **.NET 8 Runtime** (para ejecutar) o **.NET 8 SDK** (para compilar)
-  - Descargar desde: https://dotnet.microsoft.com/download/dotnet/8.0
+[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
+[![Windows](https://img.shields.io/badge/Windows-10%2B-0078D6?logo=windows)](https://www.microsoft.com/windows)
+[![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 
-## Características
+Software de escritorio para Windows que automatiza la conversión de planillas médicas (XLSX o CSV) a formato XLS estandarizado con modelo de salida de 25 columnas (A-Y).
 
-- ✅ Conversión de CSV (Reconfirmatorios/Reevaluaciones) a XLS
-- ✅ Conversión de XLSX (Anuales/Semestrales con múltiples solapas) a XLS
-- ✅ Base de datos autoalimentada de empresas (Empresas.xlsx)
-- ✅ Mapeo de prestaciones configurable (PrestacionesMap.csv)
-- ✅ Normalización automática de datos (localidades, provincias, prestaciones)
-- ✅ Validación de campos obligatorios
-- ✅ Sistema de logs detallados
-- ✅ Preview de datos antes de exportar
-- ✅ Exportación a XLS con 3 hojas (Hoja1 con datos, Hoja2 y Hoja3 vacías)
+</div>
 
-## Estructura del Proyecto
+---
 
-```
-ConvertidorDeOrdenes/
-├── ConvertidorDeOrdenes.sln           # Solución de Visual Studio
-├── ConvertidorDeOrdenes.Core/         # Lógica de negocio (sin UI)
-│   ├── Models/                        # Modelos de datos
-│   │   ├── OutputRow.cs               # Fila de salida (24 columnas A-X)
-│   │   ├── CompanyRecord.cs           # Registro de empresa
-│   │   ├── ParseResult.cs             # Resultado del parseo
-│   │   └── ValidationResult.cs        # Resultado de validación
-│   ├── Parsers/                       # Analizadores de archivos
-│   │   ├── CsvOrderParser.cs          # Parser para CSV
-│   │   └── XlsxOrderParser.cs         # Parser para XLSX
-│   └── Services/                      # Servicios de lógica
-│       ├── CompanyRepositoryExcel.cs  # Gestión de base de empresas
-│       ├── Normalizer.cs              # Normalización de datos
-│       ├── Validator.cs               # Validación de datos
-│       ├── PrestacionMapper.cs        # Mapeo de prestaciones
-│       ├── XlsExporter.cs             # Exportador a XLS (NPOI)
-│       └── Logger.cs                  # Sistema de logs
-├── ConvertidorDeOrdenes.Desktop/      # Aplicación WinForms
-│   ├── Forms/                         # Formularios de UI
-│   │   ├── WizardForm.cs              # Wizard inicial de configuración
-│   │   ├── MainForm.cs                # Formulario principal
-│   │   └── CompanyEditDialog.cs       # Diálogos de empresa
-│   └── Program.cs                     # Punto de entrada
-└── README.md                          # Este archivo
-```
+## 📋 Tabla de Contenidos
 
-## Instalación y Configuración
+- [Características Principales](#-características-principales)
+- [Requisitos del Sistema](#-requisitos-del-sistema)
+- [Instalación](#-instalación)
+- [Configuración](#-configuración)
+- [Guía de Uso](#-guía-de-uso)
+- [Arquitectura](#-arquitectura)
+- [Modelo de Datos](#-modelo-de-datos)
+- [Transformaciones Automáticas](#-transformaciones-automáticas)
+- [Solución de Problemas](#-solución-de-problemas)
 
-### 1. Descargar el Proyecto
+---
 
-Clonar o descargar el proyecto en una carpeta local.
+## ✨ Características Principales
 
-### 2. Archivos de Configuración
+### 🔄 Procesamiento de Datos
+- ✅ **Conversión CSV** - Reconfirmatorios/Reevaluaciones a XLS
+- ✅ **Conversión XLSX** - Anuales/Semestrales con múltiples solapas a XLS
+- ✅ **Formato de salida** - 25 columnas estandarizadas (A-Y) con columna ID
+- ✅ **Exportación XLS** - Compatibilidad con Excel 97-2003
 
-Colocar los siguientes archivos en la **misma carpeta del ejecutable** (.exe):
+### 🗄️ Gestión de Empresas
+- ✅ **Base de datos integrada** - Archivo Empresas.xlsx autoalimentado
+- ✅ **Auto-resolución** - Completa automáticamente datos de empresas conocidas
+- ✅ **Administración visual** - CRUD completo con interfaz gráfica
+- ✅ **Búsqueda inteligente** - Filtrado por CUIT, nombre, localidad
+- ✅ **Backup automático** - Copia de seguridad antes de cada eliminación
 
-#### **Empresas.xlsx** (Base de datos de empresas)
+### 🎯 Validación y Normalización
+- ✅ **Validación estricta** - Campos obligatorios según normativa
+- ✅ **Normalización automática** - Provincias, localidades, prestaciones
+- ✅ **Mapeo de prestaciones** - Configuración vía PrestacionesMap.csv
+- ✅ **Reglas de negocio** - Truncado de campos, limpieza de formatos
+- ✅ **Detección de duplicados** - Identifica registros repetidos
 
-Archivo Excel con las siguientes columnas:
+### 🖥️ Interfaz Moderna
+- ✅ **Diseño profesional** - UI moderna con Segoe UI y colores corporativos
+- ✅ **Selección por ART** - Soporte multi-ART (actualmente La Segunda)
+- ✅ **Wizard de configuración** - Guía paso a paso
+- ✅ **Preview interactivo** - Revisión y edición antes de exportar
+- ✅ **Estadísticas en tiempo real** - Filas, empresas, empleados únicos
+- ✅ **Sistema de logs** - Trazabilidad completa de operaciones
 
-| CUIT | CIIU | Empleador | Calle | CodPostal | Localidad | Provincia | Telefono | Fax | Mail |
-|------|------|-----------|-------|-----------|-----------|-----------|----------|-----|------|
+### 📊 Funcionalidades Avanzadas
+- ✅ **Contador de empleados únicos** - Por CUIL normalizado
+- ✅ **Warnings informativos** - Alertas sin bloquear el proceso
+- ✅ **Gestión de errores** - Mensajes claros en columna X
+- ✅ **Código postal inteligente** - Extracción desde localidad formateada
 
-- Se crea automáticamente vacío si no existe
-- Se autoalimenta al cargar empresas durante el proceso
+---
 
-#### **PrestacionesMap.csv** (Opcional - Mapeo de prestaciones)
+## 💻 Requisitos del Sistema
 
-Archivo CSV con formato:
+| Componente | Versión Mínima | Recomendado |
+|-----------|----------------|-------------|
+| **Sistema Operativo** | Windows 10 | Windows 11 |
+| **.NET Runtime** | 8.0 | 8.0 (última) |
+| **RAM** | 4 GB | 8 GB |
+| **Espacio en disco** | 100 MB | 500 MB |
+| **Resolución** | 1280x720 | 1920x1080 |
 
-```csv
-Origen,Destino
-ACIDO T-T-MUCONICO EN ORINA,ACIDO TT MUCONICO EN ORINA
-HIDROXIPIRENO EN ORINA,1-HIDROXIPIRENO EN ORINA
-```
+### Descargas
 
-- Si no existe, las prestaciones no se mapean
-- Soporta también PrestacionesMap.xlsx
+- **.NET 8 Runtime**: https://dotnet.microsoft.com/download/dotnet/8.0
+- **.NET 8 SDK** (desarrollo): https://dotnet.microsoft.com/download/dotnet/8.0
 
-### 3. Compilar el Proyecto
+---
 
-#### Opción A: Desde Visual Studio 2022
+## 📦 Instalación
 
-1. Abrir `ConvertidorDeOrdenes.sln`
-2. Seleccionar configuración **Release**
-3. Menú: **Build → Build Solution** (Ctrl+Shift+B)
-4. El ejecutable estará en: `ConvertidorDeOrdenes.Desktop\bin\Release\net8.0-windows\ConvertidorDeOrdenes.Desktop.exe`
+### Opción 1: Instalación Rápida (Usuarios)
 
-#### Opción B: Desde línea de comandos (dotnet CLI)
+1. **Descargar** la última versión compilada desde el repositorio
+2. **Extraer** el archivo ZIP en una carpeta de su preferencia
+3. **Ejecutar** `ConvertidorDeOrdenes.Desktop.exe`
 
+### Opción 2: Compilación desde Código (Desarrolladores)
+
+#### Requisitos Previos
+- Visual Studio 2022 o superior
+- .NET 8 SDK instalado
+- Git (opcional)
+
+#### Pasos de Compilación
+
+**Desde Visual Studio:**
 ```powershell
-# Navegar a la carpeta del proyecto
-cd "c:\Users\Kratos\Desktop\Seres Salud\ConvertidorDeOrdenes"
+# 1. Clonar el repositorio
+git clone https://github.com/IItheshadowII/SeresSalud.git
+cd SeresSalud
 
-# Compilar en Release
+# 2. Abrir la solución
+start ConvertidorDeOrdenes.sln
+
+# 3. En Visual Studio:
+# - Seleccionar configuración "Release"
+# - Menú: Build → Build Solution (Ctrl+Shift+B)
+# - El ejecutable estará en:
+#   ConvertidorDeOrdenes.Desktop\bin\Release\net8.0-windows\
+```
+
+**Desde línea de comandos:**
+```powershell
+# 1. Navegar a la carpeta del proyecto
+cd SeresSalud
+
+# 2. Restaurar dependencias y compilar
+dotnet restore
 dotnet build -c Release
 
-# El ejecutable estará en:
-# ConvertidorDeOrdenes.Desktop\bin\Release\net8.0-windows\
+# 3. El ejecutable estará en:
+# ConvertidorDeOrdenes.Desktop\bin\Release\net8.0-windows\ConvertidorDeOrdenes.Desktop.exe
 ```
 
-### 4. Crear Versión Portable
+### Opción 3: Crear Versión Portable
 
-Para crear una versión portable (todos los archivos en una carpeta):
+Para distribuir la aplicación sin requerir .NET instalado:
 
 ```powershell
-# Publicar aplicación autocontenida
 dotnet publish ConvertidorDeOrdenes.Desktop\ConvertidorDeOrdenes.Desktop.csproj `
   -c Release `
   -r win-x64 `
   --self-contained true `
-  -o publish
+  -p:PublishSingleFile=true `
+  -o portable
 
-# Los archivos estarán en la carpeta "publish"
+# La carpeta "portable" contendrá todos los archivos necesarios
 ```
 
-Luego copiar `Empresas.xlsx` y `PrestacionesMap.csv` a la carpeta `publish`.
+---
 
-## Uso del Software
+## ⚙️ Configuración
 
-### 1. Iniciar la Aplicación
+### Archivos de Configuración
 
-Ejecutar `ConvertidorDeOrdenes.Desktop.exe`
+Colocar los siguientes archivos en la **misma carpeta del ejecutable** (.exe):
 
-### 2. Wizard Inicial
+#### 1️⃣ **Empresas.xlsx** (Base de Datos de Empresas)
 
-Se abrirá un wizard de configuración:
+**Ubicación**: Misma carpeta que el .exe o hasta 3 niveles superiores
 
-1. **Tipo de carga:**
-   - **Anuales/Semestrales**: Archivo XLSX con múltiples solapas
-   - **Reconfirmatorios/Reevaluaciones**: Archivo CSV
+**Formato**:
 
-2. **Frecuencia:** (Obligatorio)
-   - **A**: Anual
-   - **S**: Semestral
-   - **R**: Reconfirmatorio
+| CUIT | CIIU | Empleador | Calle | CodPostal | Localidad | Provincia | Telefono | Fax | Mail |
+|------|------|-----------|-------|-----------|-----------|-----------|----------|-----|------|
+| 30-71554420-9 | 6209 | Pu innovations srl | Av. Corrientes 1234 | 1605 | MUNRO | BUENOS AIRES | 1162474278 | | info@empresa.com |
 
-3. **Referente:** (Obligatorio)
-   - Texto libre que identifica al responsable
+**Características**:
+- ✅ Se crea automáticamente vacío si no existe
+- ✅ Se autoalimenta al procesar nuevos archivos
+- ✅ Soporta múltiples formatos de entrada
+- ✅ Búsqueda por CUIT o nombre de empresa
+- ✅ Gestión visual desde menú Empresas → Administrar
 
-### 3. Seleccionar y Analizar Archivo
+#### 2️⃣ **PrestacionesMap.csv** (Opcional - Mapeo de Prestaciones)
+
+**Ubicación**: Misma carpeta que el .exe
+
+**Formato CSV**:
+```csv
+Origen,Destino
+ACIDO T-T-MUCONICO EN ORINA,ACIDO TT MUCONICO EN ORINA
+HIDROXIPIRENO EN ORINA,1-HIDROXIPIRENO EN ORINA
+EXAMEN AUDIOMETRICO,AUDIOMETRIA
+RX DE TORAX DE FRENTE,RX TORAX FRENTE
+```
+
+**Formato XLSX** (alternativo):
+| Origen | Destino |
+|--------|---------|
+| ACIDO T-T-MUCONICO EN ORINA | ACIDO TT MUCONICO EN ORINA |
+
+**Características**:
+- ✅ Acepta CSV o XLSX
+- ✅ Si no existe, las prestaciones no se mapean
+- ✅ Se aplica después de limpiar códigos y acentos
+
+---
+
+## 📖 Guía de Uso
+
+### Flujo de Trabajo Completo
+
+```
+┌─────────────────┐
+│ 1. Seleccionar  │
+│    ART          │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 2. Configurar   │
+│    Tipo + Freq  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 3. Elegir       │
+│    Archivo      │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 4. Analizar     │
+│    y Validar    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 5. Revisar      │
+│    Empresas     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 6. Exportar XLS │
+└─────────────────┘
+```
+
+### 1️⃣ Selección de ART
+
+Al iniciar la aplicación:
+- Seleccionar **La Segunda** (actualmente única ART soportada)
+- Click en **Siguiente**
+
+> 💡 **Futuro**: Se agregarán más ARTs con configuraciones específicas
+
+### 2️⃣ Configuración de Conversión
+
+**Tipo de carga:**
+- 🔵 **Anuales/Semestrales** → Archivo XLSX con múltiples solapas
+- 🔵 **Reconfirmatorios/Reevaluaciones** → Archivo CSV
+
+**Frecuencia:** (automática según tipo)
+- **A** - Anual
+- **S** - Semestral
+- **R** - Reconfirmatorio
+
+> ⚠️ **Nota**: Referente ya no se solicita al inicio (se deja vacío)
+
+### 3️⃣ Seleccionar Archivo
 
 1. Click en **"Elegir archivo..."**
-2. Seleccionar el archivo de entrada (CSV o XLSX según tipo de carga)
-3. Click en **"Analizar"**
+2. Navegar hasta el archivo de entrada:
+   - **CSV** para Reconfirmatorios
+   - **XLSX** para Anuales/Semestrales
 
-El sistema:
-- Parseará el archivo
-- Normalizará los datos
-- Validará campos obligatorios
-- Mostrará preview en grilla con las 24 columnas (A-X)
-- Mostrará estadísticas: filas, empresas, warnings, errores
+### 4️⃣ Análisis y Validación
 
-### 4. Resolver Datos Faltantes
+El sistema automáticamente:
+- ✅ Parsea el archivo según el formato
+- ✅ Extrae datos de empresa y trabajadores
+- ✅ Busca empresas en Empresas.xlsx
+- ✅ Autocompleta datos conocidos
+- ✅ Normaliza provincias, localidades, prestaciones
+- ✅ Valida campos obligatorios
+- ✅ Genera preview en grilla con 25 columnas
 
-Si faltan datos obligatorios (especialmente CUIT del empleador):
+**Estadísticas mostradas**:
+- Total de filas procesadas
+- Cantidad de empresas únicas
+- Empleados únicos (por CUIL)
+- Warnings generados
+- Errores detectados
 
-- **Se abrirá un diálogo automáticamente** para:
-  - Seleccionar empresa de la base si hay coincidencias
-  - Crear nueva empresa si no existe
-  - Completar datos manualmente
+### 5️⃣ Revisión de Empresas (Modal Automático)
 
-Campos obligatorios:
-- CUIT Empleador
-- Empleador
-- Localidad
-- Provincia
-- Frecuencia
-- CUIL Trabajador
-- Apellido y Nombre Trabajador
-- Riesgo
-- Prestación
-- Referente
+Si se detectan empresas incompletas o múltiples coincidencias:
 
-### 5. Exportar
+**Opciones disponibles**:
+- 🔍 **Buscar en Empresas.xlsx** - Encuentra por CUIT o nombre
+- ✏️ **Editar/Crear empresa** - Completa datos manualmente
+- 🗑️ **Eliminar empresa** - Elimina con backup automático
 
-1. Click en **"Exportar XLS"**
-2. Elegir ubicación y nombre de archivo
-3. El sistema generará un archivo `.xls` con:
-   - **Hoja1**: Datos (columnas A-X)
+**Búsqueda rápida**:
+- Filtrar por CUIT, nombre, localidad o provincia
+- Doble click para seleccionar
+
+### 6️⃣ Exportar Resultado
+
+1. Click en **"Exportar XLS"** (se habilita si no hay errores)
+2. Elegir ubicación y nombre para el archivo
+3. El sistema genera archivo `.xls` con:
+   - **Hoja1**: Datos (columnas A-Y)
    - **Hoja2**: Vacía
    - **Hoja3**: Vacía
 
-## Modelo de Salida (Columnas A-X)
+**Reglas de exportación**:
+- Código Postal: siempre vacío (columna E)
+- Nro Documento: siempre vacío (columna O)
+- Referente: siempre vacío (columna W)
 
-| Col | Nombre | Obligatorio | Descripción |
-|-----|--------|-------------|-------------|
-| A | CuitEmpleador | ✅ | CUIT del empleador (XX-XXXXXXXX-X) |
-| B | CIIU | ❌ | Código CIIU |
-| C | Empleador | ✅ | Razón social del empleador |
-| D | Calle | ❌ | Domicilio calle |
-| E | CodPostal | ❌ | Código postal |
-| F | Localidad | ✅ | Localidad (limpia, sin CP ni sufijos) |
-| G | Provincia | ✅ | Provincia (normalizada) |
-| H | ABMlocProv | ❌ | Alta/Baja/Modificación localidad/provincia |
-| I | Telefono | ❌ | Teléfono |
-| J | Fax | ❌ | Fax |
-| K | Contrato | ❌ | Número de contrato |
-| L | NroEstablecimiento | ❌ | Número de establecimiento |
-| M | Frecuencia | ✅ | A/S/R |
-| N | Cuil | ✅ | CUIL del trabajador |
-| O | NroDocumento | ❌ | Número de documento |
-| P | TrabajadorApellidoNombre | ✅ | Apellido y nombre del trabajador |
-| Q | Riesgo | ✅ | Descripción del riesgo (máx 90 caracteres) |
-| R | DescripcionRiesgo | ❌ | Descripción extendida |
-| S | ABMRiesgo | ❌ | Alta/Baja/Modificación riesgo |
-| T | Prestacion | ✅ | Prestación médica (sin acentos, sin "cod:") |
-| U | HistoriaClinica | ❌ | Número de historia clínica |
-| V | Mail | ❌ | Email |
-| W | Referente | ✅ | Referente (del wizard) |
-| X | DescripcionError | ❌ | Mensajes de error/validación |
+---
 
-## Transformaciones Automáticas
+## 🏗️ Arquitectura
 
-### Prestaciones
-- Remueve "cod: XXX" al final
-- Elimina acentos: "tórax" → "torax"
-- Aplica mapeo desde PrestacionesMap.csv si existe
+### Estructura del Proyecto
 
-### Empleador/Establecimiento
-- Separa formato "NRO - NOMBRE"
-- Ejemplo: "2 - Pu innovations srl" → NroEstablecimiento="2", Empleador="Pu innovations srl"
+```
+ConvertidorDeOrdenes/
+├── 📁 ConvertidorDeOrdenes.Core/      # Capa de lógica (sin UI)
+│   ├── 📁 Models/
+│   │   ├── OutputRow.cs               # Modelo de salida (A-Y)
+│   │   ├── CompanyRecord.cs           # Modelo de empresa
+│   │   ├── ParseResult.cs             # Resultado de parseo
+│   │   └── ValidationResult.cs        # Resultado de validación
+│   ├── 📁 Parsers/
+│   │   ├── CsvOrderParser.cs          # Parser CSV
+│   │   └── XlsxOrderParser.cs         # Parser XLSX multihoja
+│   └── 📁 Services/
+│       ├── CompanyRepositoryExcel.cs  # CRUD Empresas.xlsx
+│       ├── Normalizer.cs              # Normalización
+│       ├── Validator.cs               # Validación
+│       ├── PrestacionMapper.cs        # Mapeo prestaciones
+│       ├── XlsExporter.cs             # Export NPOI/HSSF
+│       └── Logger.cs                  # Sistema de logs
+│
+├── 📁 ConvertidorDeOrdenes.Desktop/   # Capa de presentación
+│   ├── 📁 Forms/
+│   │   ├── ArtSelectionForm.cs        # Selección ART
+│   │   ├── WizardForm.cs              # Configuración inicial
+│   │   ├── MainForm.cs                # Formulario principal
+│   │   ├── CompanyResolutionForm.cs   # Revisión de empresas
+│   │   ├── CompanyEditDialog.cs       # Alta/edición empresa
+│   │   ├── CompanySelectDialog.cs     # Selección múltiple
+│   │   └── CompanyListForm.cs         # Administración CRUD
+│   └── Program.cs                     # Entry point
+│
+├── 📁 logs/                           # Logs generados
+├── Empresas.xlsx                      # Base de datos empresas
+├── PrestacionesMap.csv                # Mapeo prestaciones
+└── README.md                          # Esta documentación
+```
 
-### Localidad
-- Limpia códigos postales: "(1605) MUNRO-B A" → "MUNRO"
-- Remueve sufijos de provincia: "JUAN BAUTISTA ALBERDI BA" → "JUAN BAUTISTA ALBERDI"
+### Tecnologías Utilizadas
 
-### Provincia
-- Normaliza variantes:
-  - "BA", "B A", "BS AS" → "BUENOS AIRES"
-  - "CF", "CABA" → "CAPITAL FEDERAL"
-  - "CBA" → "CORDOBA"
-  - etc.
+| Componente | Tecnología | Versión |
+|-----------|------------|---------|
+| **Framework** | .NET | 8.0 |
+| **UI** | Windows Forms | .NET 8 |
+| **Excel (lectura)** | ClosedXML | 0.104+ |
+| **Excel (escritura XLS)** | NPOI HSSF | 2.7+ |
+| **Arquitectura** | Capas (Core + Desktop) | - |
 
-### Riesgo
-- Trunca a 90 caracteres si excede
-- Genera warning en log
+---
 
-## Logs
+## 📊 Modelo de Datos
 
-Los logs se guardan en la carpeta **logs/** junto al ejecutable.
+### Columnas de Salida (A-Y)
 
-Formato: `log_yyyyMMdd_HHmmss.txt`
+| Col | Campo | Req | Descripción | Transformaciones |
+|-----|-------|-----|-------------|------------------|
+| **A** | CuitEmpleador | ✅ | CUIT del empleador | Validación formato XX-XXXXXXXX-X |
+| **B** | CIIU | ❌ | Código CIIU de actividad | - |
+| **C** | Empleador | ✅ | Razón social | Limpieza de formato "NRO - NOMBRE" |
+| **D** | Calle | ❌ | Domicilio | - |
+| **E** | CodPostal | ❌ | Código postal | ⚠️ Siempre vacío en salida |
+| **F** | Localidad | ✅ | Localidad normalizada | Limpieza CP, sufijos provincia |
+| **G** | Provincia | ✅ | Provincia normalizada | BA→BUENOS AIRES, CF→CAPITAL FEDERAL |
+| **H** | ABMlocProv | ❌ | Alta/Baja/Modif localidad | - |
+| **I** | Telefono | ❌ | Teléfono de contacto | - |
+| **J** | Fax | ❌ | Número de fax | - |
+| **K** | Contrato | ❌ | Número de contrato | - |
+| **L** | NroEstablecimiento | ❌ | N° de establecimiento | Extracción desde "NRO - NOMBRE" |
+| **M** | Frecuencia | ✅ | A/S/R (Anual/Semestral/Reconf) | Del wizard |
+| **N** | Cuil | ✅ | CUIL del trabajador | Validación formato |
+| **O** | NroDocumento | ❌ | Número de documento | ⚠️ Siempre vacío en salida |
+| **P** | TrabajadorApellidoNombre | ✅ | Apellido y nombre completo | - |
+| **Q** | Riesgo | ✅ | Descripción del riesgo | Max 90 chars (trunca con warning) |
+| **R** | DescripcionRiesgo | ❌ | Descripción extendida | - |
+| **S** | ABMRiesgo | ❌ | Alta/Baja/Modif riesgo | - |
+| **T** | Prestacion | ✅ | Prestación médica | Limpieza cod:, acentos, mapeo |
+| **U** | HistoriaClinica | ❌ | Número de HC | - |
+| **V** | Mail | ❌ | Email de contacto | - |
+| **W** | Referente | ✅ | Referente | ⚠️ Siempre vacío en salida |
+| **X** | DescripcionError | ❌ | Mensajes de validación | Solo internos |
+| **Y** | Id | ❌ | Identificador único | Por definir |
 
-Contenido:
-- Información de entrada (archivo, tipo de carga, frecuencia)
-- Cantidad de filas procesadas
-- Warnings (prestación sin mapeo, truncado, etc.)
-- Errores (campos obligatorios faltantes)
+### Leyenda
+- ✅ Campo obligatorio (el sistema valida antes de exportar)
+- ❌ Campo opcional
+- ⚠️ Campo con regla especial de negocio
 
-## Errores Comunes
+---
 
-### "No se puede abrir Empresas.xlsx"
+## 🔄 Transformaciones Automáticas
 
-- **Causa**: El archivo está abierto en Excel
-- **Solución**: Cerrar Excel y reintentar
+### 1. Prestaciones
 
-### "Error leyendo archivo CSV"
+**Limpieza de códigos:**
+```
+Entrada:  "RX DE TORAX DE FRENTE cod: R02"
+Salida:   "RX DE TORAX DE FRENTE"
+```
 
-- **Causa**: Encoding incorrecto o formato inválido
-- **Solución**: Verificar que el CSV use encoding ISO-8859-1 (Latin-1) y delimitador coma
+**Eliminación de acentos:**
+```
+"AUDIOMETRÍA TONAL" → "AUDIOMETRIA TONAL"
+"ESPIROMETRÍA" → "ESPIROMETRIA"
+```
 
-### "CUIT Empleador es obligatorio"
+**Mapeo desde PrestacionesMap:**
+```csv
+# Archivo: PrestacionesMap.csv
+ACIDO T-T-MUCONICO EN ORINA,ACIDO TT MUCONICO EN ORINA
 
-- **Causa**: No se pudo resolver el CUIT desde el archivo ni desde Empresas.xlsx
-- **Solución**: Completar manualmente en el diálogo que se abre automáticamente
+# Resultado:
+"ACIDO T-T-MUCONICO EN ORINA" → "ACIDO TT MUCONICO EN ORINA"
+```
 
-## Ejemplos de Archivos de Entrada
+### 2. Empleador y Establecimiento
 
-### CSV Reconfirmatorios (ejemplo)
+**Separación de número y nombre:**
+```
+Entrada:  "2 - Pu innovations srl"
+Salida:   NroEstablecimiento = "2"
+          Empleador = "Pu innovations srl"
+```
+
+**Casos especiales:**
+```
+"ARCE SEGURIDAD E HIGIENE"  → NroEstablecimiento = ""
+                                Empleador = "ARCE SEGURIDAD E HIGIENE"
+```
+
+### 3. Localidad
+
+**Extracción de código postal:**
+```
+"(1605) MUNRO-B A"  → CodPostal = "1605"
+                       Localidad = "MUNRO"
+```
+
+**Limpieza de sufijos de provincia:**
+```
+"JUAN BAUTISTA ALBERDI BA"  → "JUAN BAUTISTA ALBERDI"
+"SAN MIGUEL CF"             → "SAN MIGUEL"
+```
+
+**Casos complejos:**
+```
+"(6034) LOCALIDAD-B A"  → CodPostal = "6034"
+                           Localidad = "LOCALIDAD"
+```
+
+### 4. Provincia
+
+**Normalización de abreviaturas:**
+
+| Entrada | Salida |
+|---------|--------|
+| BA, B A, BS AS, BS.AS. | BUENOS AIRES |
+| CF, CABA | CAPITAL FEDERAL |
+| CBA, COR | CORDOBA |
+| SF, SFE | SANTA FE |
+| MZA | MENDOZA |
+| TUC | TUCUMAN |
+| SDE | SANTIAGO DEL ESTERO |
+
+**Limpieza de formato:**
+```
+"BUENOS AIRES (BA)"  → "BUENOS AIRES"
+"Bs. As."            → "BUENOS AIRES"
+```
+
+### 5. Riesgo (Frecuencia R)
+
+**Regla especial para Reconfirmatorios:**
+```
+Si Frecuencia = "R" entonces:
+    Riesgo = Prestacion
+```
+
+**Truncado con warning:**
+```
+Si len(Riesgo) > 90:
+    Riesgo = Riesgo[0:90]
+    Warning: "Riesgo truncado a 90 caracteres para fila X"
+```
+
+### 6. CUIL/CUIT
+
+**Normalización de formato:**
+```
+"20259133867"       → "20-25913386-7"
+"20-25913386-7"     → "20-25913386-7"
+```
+
+---
+
+## 📝 Sistema de Logs
+
+### Ubicación
+
+```
+ConvertidorDeOrdenes/
+└── logs/
+    ├── log_20260131_093025.txt
+    ├── log_20260131_103512.txt
+    └── log_20260131_142205.txt
+```
+
+Formato de nombre: `log_yyyyMMdd_HHmmss.txt`
+
+### Contenido del Log
+
+```
+[09:30:25] === Inicio de sesión ===
+[09:30:25] Tipo de carga: AnualesSemestrales
+[09:30:25] Frecuencia: A
+[09:30:25] ART: La Segunda
+[09:30:25] Referente: 
+[09:30:25] Empresas.xlsx: C:\Users\...\Empresas.xlsx
+[09:30:25] Empresas cargadas: 47
+[09:30:26] Analizando archivo: C:\Users\...\solicitudes_pendiente_prestador9671920260102001935.xlsx
+[09:30:27] Filas parseadas: 14
+[09:30:27] WARNING: Prestación sin mapeo: RX DE TORAX DE FRENTE
+[09:30:27] WARNING: Riesgo truncado a 90 caracteres para fila 5
+[09:30:28] ERROR: CUIT Empleador es obligatorio (fila 8)
+[09:30:32] Archivo exportado: C:\Users\...\SALIDA_20260131_093032.xls
+```
+
+### Tipos de Mensajes
+
+| Tipo | Prefijo | Descripción |
+|------|---------|-------------|
+| **INFO** | `[HH:mm:ss]` | Operaciones normales |
+| **WARNING** | `[HH:mm:ss] WARNING:` | Advertencias (no bloquean) |
+| **ERROR** | `[HH:mm:ss] ERROR:` | Errores críticos |
+
+---
+
+## 🔧 Solución de Problemas
+
+### ❌ Error: "No se puede abrir Empresas.xlsx"
+
+**Causa**: El archivo está abierto en Excel u otra aplicación
+
+**Solución**:
+1. Cerrar Microsoft Excel completamente
+2. Verificar que no haya procesos de Excel en el Administrador de Tareas
+3. Reintentar la operación
+
+---
+
+### ❌ Error: "Error leyendo archivo CSV"
+
+**Causas posibles**:
+- Encoding incorrecto
+- Delimitador inválido
+- Archivo corrupto
+
+**Soluciones**:
+1. Verificar que el CSV use **encoding ISO-8859-1** (Latin-1)
+2. Confirmar que el delimitador sea **coma** (,)
+3. Abrir en Excel y guardar como "CSV (delimitado por comas)"
+4. Verificar que no haya saltos de línea dentro de celdas
+
+---
+
+### ❌ Error: "CUIT Empleador es obligatorio"
+
+**Causa**: No se pudo resolver el CUIT ni desde el archivo ni desde Empresas.xlsx
+
+**Solución**:
+1. El sistema abrirá automáticamente el **modal de revisión**
+2. Opciones disponibles:
+   - 🔍 **Buscar en Empresas.xlsx**: Localizar por nombre
+   - ✏️ **Editar/Crear empresa**: Completar CUIT manualmente
+   - Si es empresa nueva, ingresar todos los datos
+
+---
+
+### ⚠️ Warning: "Prestación sin mapeo"
+
+**Causa**: La prestación no existe en PrestacionesMap.csv
+
+**Impacto**: No bloquea el proceso, sale sin modificar
+
+**Solución (opcional)**:
+1. Agregar entrada a `PrestacionesMap.csv`:
+```csv
+PRESTACION ORIGINAL,PRESTACION NORMALIZADA
+```
+2. Procesar nuevamente el archivo
+
+---
+
+### ⚠️ Warning: "Riesgo truncado a 90 caracteres"
+
+**Causa**: El campo Riesgo excede los 90 caracteres permitidos
+
+**Impacto**: Se trunca automáticamente
+
+**Solución**:
+- Revisar en el modal de revisión si es necesario
+- El sistema guarda log de qué filas fueron truncadas
+
+---
+
+### ❌ Error: "No se detectaron columnas válidas"
+
+**Causa**: El archivo XLSX no tiene el formato esperado
+
+**Soluciones**:
+1. Verificar que sea un archivo de La Segunda ART
+2. Confirmar que tenga hojas con nombres de solapas
+3. Verificar que tenga columna "CUIL" o "Beneficiario"
+
+---
+
+### 🐛 Error: "The process cannot access the file because it is being used"
+
+**Causa**: El proceso previo de la aplicación no cerró correctamente
+
+**Solución**:
+1. Abrir Administrador de Tareas (Ctrl+Shift+Esc)
+2. Buscar procesos `ConvertidorDeOrdenes.Desktop`
+3. Finalizar todos los procesos
+4. Compilar/ejecutar nuevamente
+
+---
+
+## 💡 Casos de Uso Comunes
+
+### Caso 1: Procesar Archivo Anual de La Segunda
+
+```
+1. Iniciar aplicación
+2. Seleccionar ART: "La Segunda"
+3. Tipo de carga: "Anuales/Semestrales"
+4. Frecuencia: "A - Anual"
+5. Elegir archivo XLSX de La Segunda
+6. Analizar → Revisar empresas si es necesario
+7. Exportar XLS
+```
+
+### Caso 2: Agregar Nueva Empresa a la Base
+
+```
+Opción A - Durante procesamiento:
+1. Al analizar, si no reconoce la empresa → modal de revisión
+2. Click "Editar/Crear empresa"
+3. Completar datos (CUIT obligatorio)
+4. Guardar → queda en Empresas.xlsx
+
+Opción B - Desde menú:
+1. Menú: Empresas → Administrar...
+2. Click "Agregar"
+3. Completar formulario
+4. Guardar
+```
+
+### Caso 3: Buscar y Eliminar Empresa Duplicada
+
+```
+1. Menú: Empresas → Administrar...
+2. Usar búsqueda: "nombre empresa"
+3. Seleccionar empresa duplicada
+4. Click "Eliminar"
+5. Confirmar → se crea backup automático
+```
+
+---
+
+## 🔐 Seguridad y Backups
+
+### Backups Automáticos
+
+El sistema crea backups automáticamente antes de operaciones destructivas:
+
+**Formato de backup**:
+```
+Empresas_backup_20260131_142530.xlsx
+```
+
+**Cuándo se crea**:
+- ✅ Al eliminar una empresa desde el administrador
+- ✅ Al eliminar desde el modal de selección múltiple
+
+**Ubicación**:
+- Misma carpeta que `Empresas.xlsx`
+
+---
+
+## 📚 Ejemplos de Archivos
+
+### CSV Reconfirmatorios (ejemplo completo)
 
 ```csv
 Contrato,CUIT,Razón social,Nro. Establecimiento,Nombre establecimiento,Teléfono,CUIL,Nombre Beneficiario,Práctica solicitada,Comentarios,Localidad,Provincia,Teléfono / Celular,Email Beneficiario,Nro Agencia,Email Agencia,Teléfono Agencia
 256669,30-71554420-9,"PU INNOVATIONS S.R.L.",2,"Pu innovations srl","1162474278",20-25913386-7,"BAÑULZ HERNAN DIEGO","ACIDO T-T-MUCONICO EN ORINA cod: L31","REPETIR AC TT MUCONICO","(1605) MUNRO-B A","BUENOS AIRES"," - ","","2240","belgrano@lasegunda.com.ar","1120351500"
+256669,30-71554420-9,"PU INNOVATIONS S.R.L.",2,"Pu innovations srl","1162474278",27-40374167-7,"AGUILAR EUGENIO RAMON","EXAMEN CLINICO PREOCUPACIONAL cod: C06","","(1605) MUNRO-B A","BUENOS AIRES","1162474278","","2240","belgrano@lasegunda.com.ar","1120351500"
 ```
 
 ### XLSX Anuales/Semestrales (estructura)
 
-- **Hoja "Resumen"**: Referencias a solapas de detalle
-- **Solapas de detalle** (1..N): Datos de empleados con columnas:
-  - CUIL
-  - Beneficiario / Apellido y Nombre
-  - Riesgo
-  - Prestación
+**Hoja "Resumen"**:
+| Solapa | Razón Social | CUIT |
+|--------|--------------|------|
+| 1 | Pu innovations srl | 30-71554420-9 |
+| 2 | ARCE SEGURIDAD | 30-68954321-2 |
 
-## Soporte y Contribuciones
-
-Para reportar problemas o sugerencias, revisar los logs en la carpeta `logs/` y contactar al equipo de desarrollo.
-
-## Licencia
-
-Uso interno - Seres Salud
+**Hoja "1"** (datos empleados):
+| CUIL | Beneficiario | Riesgo | Examen |
+|------|--------------|--------|--------|
+| 20-25913386-7 | BAÑULZ HERNAN | ADMINISTRATIVO | C06 - EXAMEN CLINICO |
+| 27-40374167-7 | AGUILAR EUGENIO | OPERARIO | C06 - EXAMEN CLINICO |
 
 ---
+
+## 🚀 Roadmap Futuro
+
+- [ ] Soporte para múltiples ARTs (Pepito, etc.)
+- [ ] Columna ID con lógica de autoincremento
+- [ ] Scraping de datos desde portales de ART
+- [ ] Sistema de auto-actualización
+- [ ] Versión web progresiva
+- [ ] Exportación a formatos adicionales (XLSX, PDF)
+- [ ] Importación masiva de empresas desde Excel
+- [ ] Dashboard de estadísticas
+- [ ] Integración con bases de datos SQL
+
+---
+
+## 👥 Soporte
+
+Para reportar problemas o solicitar nuevas características:
+
+1. **Logs**: Revisar carpeta `logs/` y adjuntar el archivo más reciente
+2. **Datos**: Incluir ejemplo de archivo de entrada (sin datos sensibles)
+3. **Pasos**: Describir paso a paso para reproducir el problema
+
+---
+
+## 📄 Licencia
+
+**Uso Interno - Seres Salud**
+
+Este software es propiedad de Seres Salud y está destinado exclusivamente para uso interno. Queda prohibida su distribución, modificación o uso comercial sin autorización expresa.
+
+---
+
+## 🏆 Créditos
+
+**Desarrollado para**: Seres Salud  
+**Framework**: .NET 8  
+**UI**: Windows Forms  
+**Excel**: ClosedXML + NPOI  
+
+---
+
+<div align="center">
+
+**ConvertidorDeOrdenes v2.0**  
+© 2026 Seres Salud - Todos los derechos reservados
+
+</div>
 
 **Versión**: 1.0.0  
 **Fecha**: Enero 2026  
