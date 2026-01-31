@@ -48,6 +48,7 @@ public partial class MainForm : Form
     {
         this.Text = "ConvertidorDeOrdenes - Procesamiento";
         this.Size = new Size(1250, 750);
+        this.MinimumSize = new Size(1250, 750);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.BackColor = Color.WhiteSmoke;
 
@@ -95,7 +96,8 @@ public partial class MainForm : Form
             Font = new Font("Segoe UI", 9, FontStyle.Regular),
             ForeColor = Color.FromArgb(90, 90, 90),
             Location = new Point(25, 72),
-            Size = new Size(900, 20)
+            Size = new Size(900, 20),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         };
 
         // Archivo
@@ -114,7 +116,8 @@ public partial class MainForm : Form
             Size = new Size(745, 28),
             ReadOnly = true,
             Font = new Font("Segoe UI", 9),
-            BackColor = Color.White
+            BackColor = Color.White,
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         };
 
         btnSeleccionar = new Button
@@ -126,7 +129,8 @@ public partial class MainForm : Form
             BackColor = Color.FromArgb(70, 130, 180),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
-            Cursor = Cursors.Hand
+            Cursor = Cursors.Hand,
+            Anchor = AnchorStyles.Top | AnchorStyles.Right
         };
         btnSeleccionar.FlatAppearance.BorderSize = 0;
         btnSeleccionar.Click += BtnSeleccionar_Click;
@@ -141,7 +145,8 @@ public partial class MainForm : Form
             BackColor = Color.FromArgb(60, 140, 60),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
-            Cursor = Cursors.Hand
+            Cursor = Cursors.Hand,
+            Anchor = AnchorStyles.Top | AnchorStyles.Right
         };
         btnAnalizar.FlatAppearance.BorderSize = 0;
         btnAnalizar.Click += BtnAnalizar_Click;
@@ -160,6 +165,7 @@ public partial class MainForm : Form
             BorderStyle = BorderStyle.None,
             ColumnHeadersHeight = 35,
             ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
             ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
                 BackColor = Color.FromArgb(70, 130, 180),
@@ -180,7 +186,8 @@ public partial class MainForm : Form
         {
             Location = new Point(25, 528),
             Size = new Size(1180, 1),
-            BackColor = Color.FromArgb(200, 200, 200)
+            BackColor = Color.FromArgb(200, 200, 200),
+            Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
         };
 
         // Estadísticas
@@ -191,7 +198,8 @@ public partial class MainForm : Form
             Text = "ℹ️ Seleccione un archivo y pulse 'Analizar' para comenzar el procesamiento",
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
             ForeColor = Color.FromArgb(80, 80, 80),
-            TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+            TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+            Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
         };
 
         // Título del log
@@ -201,7 +209,8 @@ public partial class MainForm : Form
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
             ForeColor = Color.FromArgb(80, 80, 80),
             Location = new Point(25, 570),
-            Size = new Size(200, 20)
+            Size = new Size(200, 20),
+            Anchor = AnchorStyles.Bottom | AnchorStyles.Left
         };
 
         // Log
@@ -214,7 +223,8 @@ public partial class MainForm : Form
             ReadOnly = true,
             Font = new Font("Consolas", 8),
             BackColor = Color.FromArgb(250, 250, 250),
-            BorderStyle = BorderStyle.FixedSingle
+            BorderStyle = BorderStyle.FixedSingle,
+            Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
         };
 
         // Botones
@@ -228,7 +238,8 @@ public partial class MainForm : Form
             BackColor = Color.FromArgb(60, 140, 60),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
-            Cursor = Cursors.Hand
+            Cursor = Cursors.Hand,
+            Anchor = AnchorStyles.Bottom | AnchorStyles.Right
         };
         btnExportar.FlatAppearance.BorderSize = 0;
         btnExportar.Click += BtnExportar_Click;
@@ -245,7 +256,8 @@ public partial class MainForm : Form
             BackColor = Color.White,
             ForeColor = Color.FromArgb(100, 100, 100),
             FlatStyle = FlatStyle.Flat,
-            Cursor = Cursors.Hand
+            Cursor = Cursors.Hand,
+            Anchor = AnchorStyles.Bottom | AnchorStyles.Right
         };
         btnNuevo.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200);
         btnNuevo.Click += BtnNuevo_Click;
