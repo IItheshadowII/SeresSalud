@@ -15,8 +15,6 @@ public class CompanyResolutionForm : Form
     private Button _btnEditarEmpresa = null!;
     private Button _btnCerrar = null!;
 
-    private bool _allowClose;
-
     public CompanyResolutionForm(IList<OutputRow> rows, CompanyRepositoryExcel companyRepository)
     {
         _rows = new BindingList<OutputRow>(rows);
@@ -32,7 +30,6 @@ public class CompanyResolutionForm : Form
         MinimumSize = new Size(1100, 650);
         StartPosition = FormStartPosition.CenterParent;
         MaximizeBox = false;
-        FormClosing += CompanyResolutionForm_FormClosing;
         BackColor = Color.WhiteSmoke;
 
         var lblTitulo = new Label
@@ -308,7 +305,7 @@ public class CompanyResolutionForm : Form
             Cursor = Cursors.Hand
         };
         _btnCerrar.FlatAppearance.BorderSize = 0;
-        _btnCerrar.Click += (_, _) => { _allowClose = true; DialogResult = DialogResult.OK; Close(); };
+        _btnCerrar.Click += (_, _) => { DialogResult = DialogResult.OK; Close(); };
 
         bottomPanel.Controls.Add(_btnBuscarBase);
         bottomPanel.Controls.Add(_btnEditarEmpresa);
@@ -320,13 +317,7 @@ public class CompanyResolutionForm : Form
         AcceptButton = _btnCerrar;
     }
 
-    private void CompanyResolutionForm_FormClosing(object? sender, FormClosingEventArgs e)
-    {
-        if (!_allowClose)
-        {
-            e.Cancel = true;
-        }
-    }
+
 
     private OutputRow? GetCurrentRow()
     {
