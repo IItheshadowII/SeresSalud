@@ -79,19 +79,38 @@ public partial class MainForm : Form
         this.MainMenuStrip = menuStrip;
         this.Controls.Add(menuStrip);
 
+        // Título y subtítulo
+        var lblTitulo = new Label
+        {
+            Text = "📂 Procesamiento de Órdenes Médicas",
+            Font = new Font("Segoe UI", 14, FontStyle.Bold),
+            ForeColor = Color.FromArgb(0, 120, 215),
+            Location = new Point(25, 38),
+            Size = new Size(600, 28)
+        };
+
+        var lblSubtitulo = new Label
+        {
+            Text = "Analice archivos de órdenes, verifique los datos y exporte al formato requerido",
+            Font = new Font("Segoe UI", 9, FontStyle.Regular),
+            ForeColor = Color.FromArgb(100, 100, 100),
+            Location = new Point(25, 66),
+            Size = new Size(900, 18)
+        };
+
         // Archivo
         lblArchivo = new Label
         {
-            Text = "Archivo de entrada:",
-            Font = new Font("Segoe UI", 10, FontStyle.Regular),
-            Location = new Point(25, 45),
-            Size = new Size(140, 24)
+            Text = "📄 Archivo de entrada:",
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            Location = new Point(25, 100),
+            Size = new Size(170, 24)
         };
 
         txtArchivo = new TextBox
         {
-            Location = new Point(165, 42),
-            Size = new Size(780, 28),
+            Location = new Point(200, 97),
+            Size = new Size(745, 28),
             ReadOnly = true,
             Font = new Font("Segoe UI", 9),
             BackColor = Color.White
@@ -99,9 +118,9 @@ public partial class MainForm : Form
 
         btnSeleccionar = new Button
         {
-            Text = "Elegir archivo...",
-            Location = new Point(955, 40),
-            Size = new Size(130, 35),
+            Text = "📁 Elegir archivo...",
+            Location = new Point(955, 95),
+            Size = new Size(140, 35),
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
             BackColor = Color.FromArgb(0, 120, 215),
             ForeColor = Color.White,
@@ -113,9 +132,9 @@ public partial class MainForm : Form
 
         btnAnalizar = new Button
         {
-            Text = "Analizar",
-            Location = new Point(1095, 40),
-            Size = new Size(110, 35),
+            Text = "▶ Analizar",
+            Location = new Point(1105, 95),
+            Size = new Size(100, 35),
             Enabled = false,
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
             BackColor = Color.FromArgb(16, 124, 16),
@@ -129,8 +148,8 @@ public partial class MainForm : Form
         // DataGridView
         dgvPreview = new DataGridView
         {
-            Location = new Point(25, 90),
-            Size = new Size(1180, 430),
+            Location = new Point(25, 145),
+            Size = new Size(1180, 375),
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,
             ReadOnly = true,
@@ -151,34 +170,53 @@ public partial class MainForm : Form
             }
         };
 
+        // Separador visual
+        var separator1 = new Label
+        {
+            Location = new Point(25, 528),
+            Size = new Size(1180, 1),
+            BackColor = Color.FromArgb(200, 200, 200)
+        };
+
         // Estadísticas
         lblEstadisticas = new Label
         {
             Location = new Point(25, 535),
-            Size = new Size(1180, 24),
-            Text = "Seleccione un archivo y pulse 'Analizar'",
+            Size = new Size(1180, 26),
+            Text = "ℹ️ Seleccione un archivo y pulse 'Analizar' para comenzar el procesamiento",
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
-            ForeColor = Color.FromArgb(80, 80, 80)
+            ForeColor = Color.FromArgb(80, 80, 80),
+            TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+        };
+
+        // Título del log
+        var lblLog = new Label
+        {
+            Text = "📋 Registro de actividad:",
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            ForeColor = Color.FromArgb(80, 80, 80),
+            Location = new Point(25, 570),
+            Size = new Size(200, 20)
         };
 
         // Log
         txtLog = new TextBox
         {
-            Location = new Point(25, 570),
-            Size = new Size(1180, 70),
+            Location = new Point(25, 595),
+            Size = new Size(1180, 55),
             Multiline = true,
             ScrollBars = ScrollBars.Vertical,
             ReadOnly = true,
             Font = new Font("Consolas", 8),
-            BackColor = Color.FromArgb(240, 240, 240),
+            BackColor = Color.FromArgb(250, 250, 250),
             BorderStyle = BorderStyle.FixedSingle
         };
 
         // Botones
         btnExportar = new Button
         {
-            Text = "Exportar XLS",
-            Location = new Point(1060, 650),
+            Text = "💾 Exportar XLS",
+            Location = new Point(1060, 660),
             Size = new Size(145, 40),
             Enabled = false,
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
@@ -190,12 +228,15 @@ public partial class MainForm : Form
         btnExportar.FlatAppearance.BorderSize = 0;
         btnExportar.Click += BtnExportar_Click;
 
+        var tooltipExportar = new ToolTip();
+        tooltipExportar.SetToolTip(btnExportar, "Exportar los datos procesados a formato XLS (Excel 97-2003)");
+
         btnNuevo = new Button
         {
-            Text = "Nueva Conversión",
-            Location = new Point(900, 650),
-            Size = new Size(150, 40),
-            Font = new Font("Segoe UI", 9),
+            Text = "🔄 Nueva Conversión",
+            Location = new Point(895, 660),
+            Size = new Size(155, 40),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
             BackColor = Color.White,
             ForeColor = Color.FromArgb(100, 100, 100),
             FlatStyle = FlatStyle.Flat,
@@ -204,12 +245,19 @@ public partial class MainForm : Form
         btnNuevo.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200);
         btnNuevo.Click += BtnNuevo_Click;
 
+        var tooltipNuevo = new ToolTip();
+        tooltipNuevo.SetToolTip(btnNuevo, "Reiniciar el proceso con un nuevo archivo");
+
+        this.Controls.Add(lblTitulo);
+        this.Controls.Add(lblSubtitulo);
         this.Controls.Add(lblArchivo);
         this.Controls.Add(txtArchivo);
         this.Controls.Add(btnSeleccionar);
         this.Controls.Add(btnAnalizar);
         this.Controls.Add(dgvPreview);
+        this.Controls.Add(separator1);
         this.Controls.Add(lblEstadisticas);
+        this.Controls.Add(lblLog);
         this.Controls.Add(txtLog);
         this.Controls.Add(btnExportar);
         this.Controls.Add(btnNuevo);
@@ -495,14 +543,17 @@ public partial class MainForm : Form
             .Distinct()
             .Count();
 
-        var stats = $"Total filas: {_parseResult.TotalRows} | " +
-                   $"Empresas: {_parseResult.UniqueCompanies} | " +
-                   $"Empleados únicos: {uniqueEmployees} | " +
-                   $"Warnings: {warnings.Count} | " +
-                   $"Errores: {errors.Count}";
+        var statusIcon = errors.Count > 0 ? "❌" : warnings.Count > 0 ? "⚠️" : "✅";
+        var stats = $"{statusIcon} Total filas: {_parseResult.TotalRows} | " +
+                   $"🏢 Empresas: {_parseResult.UniqueCompanies} | " +
+                   $"👥 Empleados únicos: {uniqueEmployees} | " +
+                   $"⚠️ Warnings: {warnings.Count} | " +
+                   $"❌ Errores: {errors.Count}";
 
         lblEstadisticas.Text = stats;
-        lblEstadisticas.ForeColor = errors.Count > 0 ? Color.Red : Color.Green;
+        lblEstadisticas.ForeColor = errors.Count > 0 ? Color.FromArgb(200, 50, 50) : 
+                                    warnings.Count > 0 ? Color.FromArgb(200, 140, 0) : 
+                                    Color.FromArgb(16, 124, 16);
 
         foreach (var warning in warnings)
         {
