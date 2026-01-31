@@ -264,6 +264,10 @@ public class CompanyResolutionForm : Form
             BackColor = Color.WhiteSmoke
         };
 
+        // Agregar panel al formulario primero para que tenga el ancho correcto
+        Controls.Add(_dgvEmpresas);
+        Controls.Add(bottomPanel);
+
         _btnBuscarBase = new Button
         {
             Text = "Buscar en Empresas.xlsx",
@@ -296,7 +300,7 @@ public class CompanyResolutionForm : Form
         {
             Text = "Aceptar",
             Anchor = AnchorStyles.Right,
-            Location = new Point(865, 20),
+            Location = new Point(bottomPanel.ClientSize.Width - 225, 20),
             Size = new Size(200, 40),
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
             BackColor = Color.FromArgb(60, 140, 60),
@@ -310,9 +314,6 @@ public class CompanyResolutionForm : Form
         bottomPanel.Controls.Add(_btnBuscarBase);
         bottomPanel.Controls.Add(_btnEditarEmpresa);
         bottomPanel.Controls.Add(_btnCerrar);
-
-        Controls.Add(_dgvEmpresas);
-        Controls.Add(bottomPanel);
 
         AcceptButton = _btnCerrar;
     }
