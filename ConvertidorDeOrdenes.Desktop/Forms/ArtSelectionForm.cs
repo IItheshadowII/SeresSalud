@@ -32,24 +32,33 @@ public sealed class ArtSelectionForm : Form
 
         var lblTitulo = new Label
         {
-            Text = "Seleccione la ART",
+            Text = "🏥 Seleccione la ART",
             Font = new Font("Segoe UI", 16, FontStyle.Bold),
             ForeColor = Color.FromArgb(0, 120, 215),
             Location = new Point(30, 25),
             Size = new Size(440, 35)
         };
 
+        var lblDescripcion = new Label
+        {
+            Text = "Elija la Aseguradora de Riesgos del Trabajo para configurar el procesamiento",
+            Font = new Font("Segoe UI", 9, FontStyle.Regular),
+            ForeColor = Color.FromArgb(100, 100, 100),
+            Location = new Point(30, 62),
+            Size = new Size(440, 18)
+        };
+
         var lblArt = new Label
         {
             Text = "ART (obligatorio):",
-            Font = new Font("Segoe UI", 10, FontStyle.Regular),
-            Location = new Point(30, 85),
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            Location = new Point(30, 95),
             Size = new Size(440, 22)
         };
 
         _cbArt = new ComboBox
         {
-            Location = new Point(30, 110),
+            Location = new Point(30, 120),
             Size = new Size(340, 28),
             DropDownStyle = ComboBoxStyle.DropDownList,
             Font = new Font("Segoe UI", 10)
@@ -61,8 +70,8 @@ public sealed class ArtSelectionForm : Form
 
         _btnSiguiente = new Button
         {
-            Text = "Siguiente",
-            Location = new Point(250, 180),
+            Text = "✓ Siguiente",
+            Location = new Point(250, 170),
             Size = new Size(110, 40),
             DialogResult = DialogResult.OK,
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
@@ -76,8 +85,8 @@ public sealed class ArtSelectionForm : Form
 
         _btnCancelar = new Button
         {
-            Text = "Cancelar",
-            Location = new Point(370, 180),
+            Text = "✕ Cancelar",
+            Location = new Point(370, 170),
             Size = new Size(100, 40),
             DialogResult = DialogResult.Cancel,
             Font = new Font("Segoe UI", 10),
@@ -90,6 +99,7 @@ public sealed class ArtSelectionForm : Form
         _btnCancelar.Click += (_, _) => { _allowClose = true; Close(); };
 
         Controls.Add(lblTitulo);
+        Controls.Add(lblDescripcion);
         Controls.Add(lblArt);
         Controls.Add(_cbArt);
         Controls.Add(_btnSiguiente);

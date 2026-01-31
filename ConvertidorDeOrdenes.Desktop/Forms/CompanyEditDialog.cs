@@ -46,13 +46,24 @@ public partial class CompanyEditDialog : Form
 
         var lblTitulo = new Label
         {
-            Text = "Datos de Empresa",
+            Text = "🏢 Datos de Empresa",
             Font = new Font("Segoe UI", 14, FontStyle.Bold),
             ForeColor = Color.FromArgb(0, 120, 215),
             Location = new Point(25, 15),
             Size = new Size(480, 30)
         };
+
+        var lblSubtitulo = new Label
+        {
+            Text = "Complete la información de la empresa. Los campos marcados con * son obligatorios.",
+            Font = new Font("Segoe UI", 9, FontStyle.Italic),
+            ForeColor = Color.FromArgb(100, 100, 100),
+            Location = new Point(25, 45),
+            Size = new Size(480, 20)
+        };
+
         this.Controls.Add(lblTitulo);
+        this.Controls.Add(lblSubtitulo);
 
         int y = 60;
         int labelWidth = 130;
@@ -60,43 +71,53 @@ public partial class CompanyEditDialog : Form
         int spacing = 42;
 
         // CUIT
-        AddField("CUIT:", ref txtCUIT, y, labelWidth, textBoxWidth);
+        AddField("CUIT: *", ref txtCUIT, y, labelWidth, textBoxWidth);
+        txtCUIT.PlaceholderText = "XX-XXXXXXXX-X";
         y += spacing;
 
         // CIIU
         AddField("CIIU:", ref txtCIIU, y, labelWidth, textBoxWidth);
+        txtCIIU.PlaceholderText = "Código de actividad";
         y += spacing;
 
         // Empleador
-        AddField("Empleador:", ref txtEmpleador, y, labelWidth, textBoxWidth);
+        AddField("Empleador: *", ref txtEmpleador, y, labelWidth, textBoxWidth);
+        txtEmpleador.PlaceholderText = "Razón social de la empresa";
         y += spacing;
 
         // Calle
         AddField("Calle:", ref txtCalle, y, labelWidth, textBoxWidth);
+        txtCalle.PlaceholderText = "Domicilio";
         y += spacing;
 
         // Código Postal
         AddField("Código Postal:", ref txtCodPostal, y, labelWidth, textBoxWidth);
+        txtCodPostal.PlaceholderText = "Ej: 1605";
         y += spacing;
 
         // Localidad
-        AddField("Localidad:", ref txtLocalidad, y, labelWidth, textBoxWidth);
+        AddField("Localidad: *", ref txtLocalidad, y, labelWidth, textBoxWidth);
+        txtLocalidad.PlaceholderText = "Ciudad o localidad";
         y += spacing;
 
         // Provincia
-        AddField("Provincia:", ref txtProvincia, y, labelWidth, textBoxWidth);
+        AddField("Provincia: *", ref txtProvincia, y, labelWidth, textBoxWidth);
+        txtProvincia.PlaceholderText = "Ej: BUENOS AIRES";
         y += spacing;
 
         // Teléfono
         AddField("Teléfono:", ref txtTelefono, y, labelWidth, textBoxWidth);
+        txtTelefono.PlaceholderText = "Número de contacto";
         y += spacing;
 
         // Fax
         AddField("Fax:", ref txtFax, y, labelWidth, textBoxWidth);
+        txtFax.PlaceholderText = "Opcional";
         y += spacing;
 
         // Mail
         AddField("Mail:", ref txtMail, y, labelWidth, textBoxWidth);
+        txtMail.PlaceholderText = "correo@empresa.com";
         y += spacing + 20;
 
         // Botones
@@ -236,26 +257,35 @@ public partial class CompanySelectDialog : Form
 
         var lblInstrucciones = new Label
         {
-            Text = "Se encontraron múltiples empresas. Seleccione una:",
-            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            Text = "🔎 Se encontraron múltiples empresas coincidentes",
+            Font = new Font("Segoe UI", 11, FontStyle.Bold),
             ForeColor = Color.FromArgb(0, 120, 215),
-            Location = new Point(25, 20),
-            Size = new Size(620, 24)
+            Location = new Point(25, 15),
+            Size = new Size(620, 26)
+        };
+
+        var lblDescripcion = new Label
+        {
+            Text = "Seleccione la empresa correcta o cree una nueva. Use el buscador para filtrar resultados.",
+            Font = new Font("Segoe UI", 9, FontStyle.Regular),
+            ForeColor = Color.FromArgb(100, 100, 100),
+            Location = new Point(25, 41),
+            Size = new Size(620, 18)
         };
 
         txtBuscar = new TextBox
         {
             PlaceholderText = "🔍 Buscar por CUIT, nombre o localidad...",
             Font = new Font("Segoe UI", 10),
-            Location = new Point(25, 50),
+            Location = new Point(25, 65),
             Size = new Size(620, 28)
         };
         txtBuscar.TextChanged += (_, _) => ApplyFilter();
 
         lstCompanies = new ListBox
         {
-            Location = new Point(25, 90),
-            Size = new Size(620, 280),
+            Location = new Point(25, 105),
+            Size = new Size(620, 265),
             Font = new Font("Segoe UI", 9),
             BackColor = Color.White,
             BorderStyle = BorderStyle.FixedSingle
@@ -319,6 +349,7 @@ public partial class CompanySelectDialog : Form
         btnCancelar.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200);
 
         this.Controls.Add(lblInstrucciones);
+        this.Controls.Add(lblDescripcion);
         this.Controls.Add(txtBuscar);
         this.Controls.Add(lstCompanies);
         this.Controls.Add(btnSeleccionar);

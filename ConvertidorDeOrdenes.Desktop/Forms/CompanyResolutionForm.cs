@@ -39,18 +39,29 @@ public class CompanyResolutionForm : Form
 
         var lblTitulo = new Label
         {
-            Text = "Revisión de datos de empresas",
+            Text = "📋 Revisión de Datos de Empresas y Trabajadores",
             Font = new Font("Segoe UI", 14, FontStyle.Bold),
             ForeColor = Color.FromArgb(0, 120, 215),
             Location = new Point(25, 15),
             Size = new Size(1000, 30)
         };
+
+        var lblSubtitulo = new Label
+        {
+            Text = "Verifique y complete la información antes de exportar. Los campos editables pueden modificarse directamente en la tabla.",
+            Font = new Font("Segoe UI", 9, FontStyle.Regular),
+            ForeColor = Color.FromArgb(100, 100, 100),
+            Location = new Point(25, 45),
+            Size = new Size(1000, 20)
+        };
+
         this.Controls.Add(lblTitulo);
+        this.Controls.Add(lblSubtitulo);
 
         _dgvEmpresas = new DataGridView
         {
-            Location = new Point(25, 55),
-            Size = new Size(1040, 490),
+            Location = new Point(25, 75),
+            Size = new Size(1040, 470),
             AutoGenerateColumns = false,
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,

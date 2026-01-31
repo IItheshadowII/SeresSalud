@@ -46,27 +46,36 @@ public partial class WizardForm : Form
         // Título
         lblTitulo = new Label
         {
-            Text = "Configuración de Nueva Conversión",
+            Text = "⚙️ Configuración de Nueva Conversión",
             Font = new Font("Segoe UI", 16, FontStyle.Bold),
             ForeColor = Color.FromArgb(0, 120, 215),
             Location = new Point(30, 25),
             Size = new Size(520, 35)
         };
 
+        var lblDescripcion = new Label
+        {
+            Text = "Configure los parámetros de procesamiento según el tipo de archivo que desea convertir",
+            Font = new Font("Segoe UI", 9, FontStyle.Regular),
+            ForeColor = Color.FromArgb(100, 100, 100),
+            Location = new Point(30, 62),
+            Size = new Size(520, 18)
+        };
+
         // Tipo de carga
         lblTipoCarga = new Label
         {
             Text = "Seleccione el tipo de carga:",
-            Font = new Font("Segoe UI", 10, FontStyle.Regular),
-            Location = new Point(30, 80),
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            Location = new Point(30, 95),
             Size = new Size(520, 24)
         };
 
         rbAnualesSemestrales = new RadioButton
         {
-            Text = "Anuales/Semestrales (XLSX con múltiples solapas)",
+            Text = "📊 Anuales/Semestrales (XLSX con múltiples solapas)",
             Font = new Font("Segoe UI", 10),
-            Location = new Point(50, 110),
+            Location = new Point(50, 125),
             Size = new Size(480, 28),
             Checked = true
         };
@@ -74,9 +83,9 @@ public partial class WizardForm : Form
 
         rbReconfirmatorios = new RadioButton
         {
-            Text = "Reconfirmatorios/Reevaluaciones (CSV)",
+            Text = "📄 Reconfirmatorios/Reevaluaciones (CSV)",
             Font = new Font("Segoe UI", 10),
-            Location = new Point(50, 145),
+            Location = new Point(50, 160),
             Size = new Size(480, 28)
         };
         rbReconfirmatorios.CheckedChanged += Radio_CheckedChanged;
@@ -85,14 +94,14 @@ public partial class WizardForm : Form
         lblFrecuencia = new Label
         {
             Text = "Frecuencia (obligatorio):",
-            Font = new Font("Segoe UI", 10, FontStyle.Regular),
-            Location = new Point(30, 195),
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            Location = new Point(30, 210),
             Size = new Size(520, 24)
         };
 
         cbFrecuencia = new ComboBox
         {
-            Location = new Point(50, 225),
+            Location = new Point(50, 240),
             Size = new Size(280, 28),
             DropDownStyle = ComboBoxStyle.DropDownList,
             Font = new Font("Segoe UI", 10)
@@ -132,6 +141,7 @@ public partial class WizardForm : Form
 
         // Agregar controles
         this.Controls.Add(lblTitulo);
+        this.Controls.Add(lblDescripcion);
         this.Controls.Add(lblTipoCarga);
         this.Controls.Add(rbAnualesSemestrales);
         this.Controls.Add(rbReconfirmatorios);
