@@ -37,7 +37,7 @@ public partial class CompanyEditDialog : Form
     private void InitializeComponent()
     {
         this.Text = "Datos de Empresa";
-        this.Size = new Size(550, 560);
+        this.Size = new Size(620, 600);
         this.StartPosition = FormStartPosition.CenterParent;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
         this.MaximizeBox = false;
@@ -50,7 +50,7 @@ public partial class CompanyEditDialog : Form
             Font = new Font("Segoe UI", 13, FontStyle.Bold),
             ForeColor = Color.FromArgb(50, 50, 50),
             Location = new Point(25, 15),
-            Size = new Size(480, 30)
+            Size = new Size(550, 30)
         };
 
         var lblSubtitulo = new Label
@@ -59,16 +59,16 @@ public partial class CompanyEditDialog : Form
             Font = new Font("Segoe UI", 9, FontStyle.Italic),
             ForeColor = Color.FromArgb(90, 90, 90),
             Location = new Point(25, 45),
-            Size = new Size(480, 20)
+            Size = new Size(550, 20)
         };
 
         this.Controls.Add(lblTitulo);
         this.Controls.Add(lblSubtitulo);
 
-        int y = 60;
-        int labelWidth = 130;
-        int textBoxWidth = 340;
-        int spacing = 42;
+        int y = 75;
+        int labelWidth = 140;
+        int textBoxWidth = 400;
+        int spacing = 45;
 
         // CUIT
         AddField("CUIT: *", ref txtCUIT, y, labelWidth, textBoxWidth);
