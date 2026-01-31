@@ -31,10 +31,8 @@ public sealed class CompanyListForm : Form
     {
         Text = "Administración de Empresas";
         Size = new Size(980, 580);
+        MinimumSize = new Size(980, 580);
         StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
         BackColor = Color.WhiteSmoke;
 
         var lblTitulo = new Label
@@ -52,7 +50,8 @@ public sealed class CompanyListForm : Form
             Font = new Font("Segoe UI", 9, FontStyle.Regular),
             ForeColor = Color.FromArgb(90, 90, 90),
             Location = new Point(25, 45),
-            Size = new Size(900, 18)
+            Size = new Size(900, 18),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         };
 
         _txtBuscar = new TextBox
@@ -60,7 +59,8 @@ public sealed class CompanyListForm : Form
             Location = new Point(25, 70),
             Size = new Size(600, 28),
             Font = new Font("Segoe UI", 10),
-            PlaceholderText = "🔍 Buscar por CUIT, nombre o localidad..."
+            PlaceholderText = "🔍 Buscar por CUIT, nombre o localidad...",
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         };
         _txtBuscar.TextChanged += (_, _) => ApplyFilter();
 
@@ -77,6 +77,7 @@ public sealed class CompanyListForm : Form
             BorderStyle = BorderStyle.None,
             ColumnHeadersHeight = 35,
             ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
             ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
                 BackColor = Color.FromArgb(70, 130, 180),
@@ -145,7 +146,8 @@ public sealed class CompanyListForm : Form
             BackColor = Color.White,
             ForeColor = Color.FromArgb(100, 100, 100),
             FlatStyle = FlatStyle.Flat,
-            Cursor = Cursors.Hand
+            Cursor = Cursors.Hand,
+            Anchor = AnchorStyles.Top | AnchorStyles.Right
         };
         _btnCerrar.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200);
         _btnCerrar.Click += (_, _) => Close();

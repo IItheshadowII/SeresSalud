@@ -29,10 +29,8 @@ public class CompanyResolutionForm : Form
     {
         Text = "Revisión de datos de empresas";
         Size = new Size(1100, 650);
+        MinimumSize = new Size(1100, 650);
         StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
         ControlBox = false;
         FormClosing += CompanyResolutionForm_FormClosing;
         BackColor = Color.WhiteSmoke;
@@ -52,7 +50,8 @@ public class CompanyResolutionForm : Form
             Font = new Font("Segoe UI", 9, FontStyle.Regular),
             ForeColor = Color.FromArgb(90, 90, 90),
             Location = new Point(25, 45),
-            Size = new Size(1000, 20)
+            Size = new Size(1000, 20),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         };
 
         this.Controls.Add(lblTitulo);
@@ -74,6 +73,7 @@ public class CompanyResolutionForm : Form
             BorderStyle = BorderStyle.None,
             ColumnHeadersHeight = 35,
             ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
             ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
                 BackColor = Color.FromArgb(70, 130, 180),
@@ -298,7 +298,7 @@ public class CompanyResolutionForm : Form
         _btnCerrar = new Button
         {
             Text = "Aceptar",
-            Anchor = AnchorStyles.Top | AnchorStyles.Left,
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
             Location = new Point(865, 20),
             Size = new Size(200, 40),
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
