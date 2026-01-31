@@ -533,7 +533,7 @@ public partial class MainForm : Form
         foreach (var row in _parseResult.Rows)
         {
             dgvPreview.Rows.Add(
-                row.CuitEmpleador, row.CIIU, row.Empleador, row.Calle, row.CodPostal,
+                row.CuitEmpleador, row.CIIU, row.Empleador, row.Calle, string.Empty,
                 row.Localidad, row.Provincia, row.ABMlocProv, row.Telefono, row.Fax,
                 row.Contrato, row.NroEstablecimiento, row.Frecuencia, row.Cuil, row.NroDocumento,
                 row.TrabajadorApellidoNombre, row.Riesgo, row.DescripcionRiesgo, row.ABMRiesgo,
