@@ -295,7 +295,7 @@ public class CompanyResolutionForm : Form
         _btnCerrar = new Button
         {
             Text = "Aceptar",
-            Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+            Anchor = AnchorStyles.Right,
             Location = new Point(865, 20),
             Size = new Size(200, 40),
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
