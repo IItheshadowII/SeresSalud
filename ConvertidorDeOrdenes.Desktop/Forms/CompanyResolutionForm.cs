@@ -72,12 +72,16 @@ public class CompanyResolutionForm : Form
             AllowUserToOrderColumns = true,
             BackgroundColor = Color.White,
             BorderStyle = BorderStyle.None,
+            ColumnHeadersHeight = 35,
+            ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
             ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
                 BackColor = Color.FromArgb(70, 130, 180),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                Padding = new Padding(5)
+                Padding = new Padding(5),
+                Alignment = DataGridViewContentAlignment.MiddleCenter,
+                WrapMode = DataGridViewTriState.False
             },
             AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle
             {

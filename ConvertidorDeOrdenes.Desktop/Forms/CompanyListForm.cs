@@ -75,11 +75,15 @@ public sealed class CompanyListForm : Form
             AllowUserToDeleteRows = false,
             BackgroundColor = Color.White,
             BorderStyle = BorderStyle.None,
+            ColumnHeadersHeight = 35,
+            ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
             ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
                 BackColor = Color.FromArgb(70, 130, 180),
                 ForeColor = Color.White,
-                Font = new Font("Segoe UI", 9, FontStyle.Bold)
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                Alignment = DataGridViewContentAlignment.MiddleCenter,
+                WrapMode = DataGridViewTriState.False
             }
         };
 
