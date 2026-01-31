@@ -37,7 +37,7 @@ public partial class CompanyEditDialog : Form
     private void InitializeComponent()
     {
         this.Text = "Datos de Empresa";
-        this.Size = new Size(620, 600);
+        this.Size = new Size(610, 600);
         this.StartPosition = FormStartPosition.CenterParent;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
         this.MaximizeBox = false;
@@ -50,7 +50,7 @@ public partial class CompanyEditDialog : Form
             Font = new Font("Segoe UI", 13, FontStyle.Bold),
             ForeColor = Color.FromArgb(50, 50, 50),
             Location = new Point(25, 15),
-            Size = new Size(550, 30)
+            Size = new Size(540, 30)
         };
 
         var lblSubtitulo = new Label
@@ -59,15 +59,15 @@ public partial class CompanyEditDialog : Form
             Font = new Font("Segoe UI", 9, FontStyle.Italic),
             ForeColor = Color.FromArgb(90, 90, 90),
             Location = new Point(25, 45),
-            Size = new Size(550, 20)
+            Size = new Size(540, 20)
         };
 
         this.Controls.Add(lblTitulo);
         this.Controls.Add(lblSubtitulo);
 
         int y = 75;
-        int labelWidth = 140;
-        int textBoxWidth = 400;
+        int labelWidth = 130;
+        int textBoxWidth = 390;
         int spacing = 45;
 
         // CUIT
@@ -124,8 +124,8 @@ public partial class CompanyEditDialog : Form
         btnGuardar = new Button
         {
             Text = "Guardar",
-            Location = new Point(240, y),
-            Size = new Size(110, 38),
+            Location = new Point(225, y),
+            Size = new Size(120, 38),
             DialogResult = DialogResult.OK,
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
             BackColor = Color.FromArgb(70, 130, 180),
@@ -139,8 +139,8 @@ public partial class CompanyEditDialog : Form
         btnCancelar = new Button
         {
             Text = "Cancelar",
-            Location = new Point(360, y),
-            Size = new Size(110, 38),
+            Location = new Point(355, y),
+            Size = new Size(120, 38),
             DialogResult = DialogResult.Cancel,
             Font = new Font("Segoe UI", 10),
             BackColor = Color.White,
@@ -169,7 +169,7 @@ public partial class CompanyEditDialog : Form
 
         textBox = new TextBox
         {
-            Location = new Point(160, y),
+            Location = new Point(25 + labelWidth + 10, y),
             Size = new Size(textBoxWidth, 28),
             Font = new Font("Segoe UI", 9)
         };
