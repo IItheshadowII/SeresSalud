@@ -31,7 +31,7 @@ public class CompanyResolutionForm : Form
         Size = new Size(1100, 650);
         MinimumSize = new Size(1100, 650);
         StartPosition = FormStartPosition.CenterParent;
-        ControlBox = false;
+        MaximizeBox = false;
         FormClosing += CompanyResolutionForm_FormClosing;
         BackColor = Color.WhiteSmoke;
 
@@ -298,7 +298,7 @@ public class CompanyResolutionForm : Form
         _btnCerrar = new Button
         {
             Text = "Aceptar",
-            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
             Location = new Point(865, 20),
             Size = new Size(200, 40),
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
