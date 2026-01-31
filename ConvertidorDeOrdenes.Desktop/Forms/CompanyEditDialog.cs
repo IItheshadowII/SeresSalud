@@ -37,7 +37,7 @@ public partial class CompanyEditDialog : Form
     private void InitializeComponent()
     {
         this.Text = "Datos de Empresa";
-        this.Size = new Size(610, 600);
+        this.Size = new Size(610, 640);
         this.StartPosition = FormStartPosition.CenterParent;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
         this.MaximizeBox = false;
