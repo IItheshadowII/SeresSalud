@@ -7,6 +7,7 @@ public static class AppInitializer
         Directory.CreateDirectory(AppPaths.DataRootDirectory);
         Directory.CreateDirectory(AppPaths.DbDirectory);
         Directory.CreateDirectory(AppPaths.LogsDirectory);
+        Directory.CreateDirectory(AppPaths.WebView2UserDataDirectory);
 
         EnsureSeeded(AppPaths.SeedCompaniesFilePath, AppPaths.CompaniesFilePath);
     }

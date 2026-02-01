@@ -22,6 +22,7 @@ public static class AppPaths
     public static string SeedCompaniesFilePath => Path.Combine(InstallDirectory, "DB", "Empresas.xlsx");
 
     public static string LogsDirectory => Path.Combine(DataRootDirectory, "logs");
+    public static string WebView2UserDataDirectory => Path.Combine(DataRootDirectory, "WebView2");
     public static string UpdateStatePath => Path.Combine(DataRootDirectory, "update_state.json");
 
     public static Version GetCurrentVersion()

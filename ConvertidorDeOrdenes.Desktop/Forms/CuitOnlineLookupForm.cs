@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using ConvertidorDeOrdenes.Desktop.Services;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
@@ -75,6 +76,14 @@ public sealed class CuitOnlineLookupForm : Form
 
         try
         {
+            // IMPORTANTE: En instalaciones corporativas, la app suele vivir en Program Files.
+            // WebView2 necesita escribir en su UserDataFolder, así que lo movemos a AppData.
+            Directory.CreateDirectory(AppPaths.WebView2UserDataDirectory);
+            _webView.CreationProperties = new CoreWebView2CreationProperties
+            {
+                UserDataFolder = AppPaths.WebView2UserDataDirectory
+            };
+
             await _webView.EnsureCoreWebView2Async();
             _webView.CoreWebView2.Settings.IsStatusBarEnabled = true;
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
