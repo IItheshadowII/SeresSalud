@@ -12,6 +12,7 @@ public class CompanyResolutionForm : Form
 
     private DataGridView _dgvEmpresas = null!;
     private Button _btnBuscarBase = null!;
+    private Button _btnBuscarCuitOnline = null!;
     private Button _btnEditarEmpresa = null!;
     private Button _btnCerrar = null!;
 
@@ -282,10 +283,24 @@ public class CompanyResolutionForm : Form
         _btnBuscarBase.FlatAppearance.BorderSize = 0;
         _btnBuscarBase.Click += BtnBuscarBase_Click;
 
+        _btnBuscarCuitOnline = new Button
+        {
+            Text = "Buscar CUIT online",
+            Location = new Point(235, 20),
+            Size = new Size(180, 40),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            BackColor = Color.FromArgb(100, 100, 160),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
+        };
+        _btnBuscarCuitOnline.FlatAppearance.BorderSize = 0;
+        _btnBuscarCuitOnline.Click += BtnBuscarCuitOnline_Click;
+
         _btnEditarEmpresa = new Button
         {
             Text = "Editar/Crear empresa",
-            Location = new Point(235, 20),
+            Location = new Point(425, 20),
             Size = new Size(180, 40),
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
             BackColor = Color.FromArgb(60, 140, 60),
@@ -312,13 +327,12 @@ public class CompanyResolutionForm : Form
         _btnCerrar.Click += (_, _) => { DialogResult = DialogResult.OK; Close(); };
 
         bottomPanel.Controls.Add(_btnBuscarBase);
+        bottomPanel.Controls.Add(_btnBuscarCuitOnline);
         bottomPanel.Controls.Add(_btnEditarEmpresa);
         bottomPanel.Controls.Add(_btnCerrar);
 
         AcceptButton = _btnCerrar;
     }
-
-
 
     private OutputRow? GetCurrentRow()
     {
@@ -407,6 +421,33 @@ public class CompanyResolutionForm : Form
         {
             ApplyCompanyData(row, editDialog.Company);
             _companyRepository.SaveCompany(editDialog.Company);
+            _dgvEmpresas.Refresh();
+        }
+    }
+
+    private void BtnBuscarCuitOnline_Click(object? sender, EventArgs e)
+    {
+        var row = GetCurrentRow();
+        if (row == null)
+        {
+            MessageBox.Show("Seleccione una fila para buscar el CUIT online.", "Información",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(row.Contrato))
+        {
+            MessageBox.Show("La fila seleccionada no tiene N° de contrato. Complete el contrato antes de buscar el CUIT online.",
+                "Contrato requerido",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+            return;
+        }
+
+        using var dlg = new CuitOnlineLookupForm(row.Contrato);
+        if (dlg.ShowDialog(this) == DialogResult.OK && !string.IsNullOrWhiteSpace(dlg.FoundCuit))
+        {
+            row.CuitEmpleador = dlg.FoundCuit;
             _dgvEmpresas.Refresh();
         }
     }

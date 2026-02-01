@@ -1,4 +1,5 @@
 using ConvertidorDeOrdenes.Desktop.Forms;
+using ConvertidorDeOrdenes.Desktop.Services;
 
 namespace ConvertidorDeOrdenes.Desktop;
 
@@ -11,6 +12,9 @@ static class Program
     static void Main()
     {
         ApplicationConfiguration.Initialize();
+
+        // Preparar directorios de datos persistentes (DB/logs/update state)
+        AppInitializer.Initialize();
 
         // Primera ventana: selección de ART (define el flujo completo)
         using var artSelector = new ArtSelectionForm();

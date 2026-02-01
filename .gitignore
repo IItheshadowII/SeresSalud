@@ -70,3 +70,11 @@ bld/
 
 # Publish folder
 publish/
+
+# Artifacts de release
+artifacts/
+
+# Salidas de Inno Setup
+Installer/*.exe
+Installer/*.log
+Installer/Output/

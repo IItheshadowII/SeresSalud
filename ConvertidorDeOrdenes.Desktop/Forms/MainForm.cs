@@ -1,6 +1,8 @@
 using ConvertidorDeOrdenes.Core.Models;
 using ConvertidorDeOrdenes.Core.Parsers;
 using ConvertidorDeOrdenes.Core.Services;
+using ConvertidorDeOrdenes.Desktop.Services;
+using ConvertidorDeOrdenes.Desktop.Services.Updates;
 using System.Text.RegularExpressions;
 
 namespace ConvertidorDeOrdenes.Desktop.Forms;
@@ -14,13 +16,16 @@ public partial class MainForm : Form
     private readonly string _frecuencia;
     private readonly string _referente;
     private readonly string _art;
-    private readonly string _baseDirectory;
+    private readonly string _installDirectory;
+    private readonly string _dataDirectory;
 
     private ParseResult? _parseResult;
     private CompanyRepositoryExcel? _companyRepository;
     private Normalizer? _normalizer;
     private Validator? _validator;
     private Logger? _logger;
+
+    private UpdateService? _updateService;
 
     private Label lblArchivo = null!;
     private TextBox txtArchivo = null!;
@@ -38,7 +43,8 @@ public partial class MainForm : Form
         _frecuencia = frecuencia;
         _referente = referente;
         _art = art;
-        _baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+        _installDirectory = AppPaths.InstallDirectory;
+        _dataDirectory = AppPaths.DataRootDirectory;
 
         InitializeComponent();
         InitializeServices();
@@ -46,7 +52,8 @@ public partial class MainForm : Form
 
     private void InitializeComponent()
     {
-        this.Text = "ConvertidorDeOrdenes - Procesamiento";
+        var version = AppPaths.GetCurrentVersion();
+        this.Text = $"ConvertidorDeOrdenes v{version} - Procesamiento";
         this.Size = new Size(1250, 750);
         this.MinimumSize = new Size(1250, 750);
         this.StartPosition = FormStartPosition.CenterScreen;
@@ -77,8 +84,16 @@ public partial class MainForm : Form
         empresasMenu.DropDownItems.Add(administrarEmpresasItem);
         menuStrip.Items.Add(empresasMenu);
 
+        var ayudaMenu = new ToolStripMenuItem("Ayuda") { ForeColor = Color.White };
+        var buscarActualizacionesItem = new ToolStripMenuItem("Buscar actualizaciones...");
+        buscarActualizacionesItem.Click += async (_, _) => await CheckForUpdatesAsync(interactive: true);
+        ayudaMenu.DropDownItems.Add(buscarActualizacionesItem);
+        menuStrip.Items.Add(ayudaMenu);
+
         this.MainMenuStrip = menuStrip;
         this.Controls.Add(menuStrip);
+
+        this.Shown += async (_, _) => await CheckForUpdatesAsync(interactive: false);
 
         // Título y subtítulo
         var lblTitulo = new Label
@@ -305,19 +320,23 @@ public partial class MainForm : Form
     {
         try
         {
-            _logger = new Logger(_baseDirectory);
+            _logger = new Logger(_dataDirectory);
             _logger.LogInfo("=== Inicio de sesión ===");
             _logger.LogInfo($"Tipo de carga: {_tipoCarga}");
             _logger.LogInfo($"Frecuencia: {_frecuencia}");
             _logger.LogInfo($"ART: {_art}");
             _logger.LogInfo($"Referente: {_referente}");
+            _logger.LogInfo($"InstallDir: {_installDirectory}");
+            _logger.LogInfo($"DataDir: {_dataDirectory}");
 
-            _companyRepository = new CompanyRepositoryExcel(_baseDirectory);
+            _companyRepository = new CompanyRepositoryExcel(_dataDirectory);
             _logger.LogInfo($"Empresas.xlsx: {_companyRepository.FilePath}");
             _logger.LogInfo($"Empresas cargadas: {_companyRepository.CompaniesCount}");
-            var prestacionMapper = new PrestacionMapper(_baseDirectory);
+            var prestacionMapper = new PrestacionMapper(_installDirectory);
             _normalizer = new Normalizer(prestacionMapper);
             _validator = new Validator();
+
+            _updateService = new UpdateService(new HttpClient(), new UpdateStateStore(AppPaths.UpdateStatePath));
         }
         catch (Exception ex)
         {
@@ -344,6 +363,87 @@ public partial class MainForm : Form
             txtArchivo.Text = dialog.FileName;
             btnAnalizar.Enabled = true;
             LogMessage($"Archivo seleccionado: {dialog.FileName}");
+        }
+    }
+
+    private async Task CheckForUpdatesAsync(bool interactive)
+    {
+        if (_updateService == null)
+            return;
+
+        try
+        {
+            if (!interactive && !_updateService.ShouldAutoCheck())
+                return;
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var update = await _updateService.CheckLatestAsync(cts.Token);
+
+            if (update == null)
+            {
+                if (interactive)
+                {
+                    MessageBox.Show("No hay actualizaciones disponibles.", "Actualizaciones",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                return;
+            }
+
+            if (!interactive && !_updateService.ShouldNotify(update))
+                return;
+
+            _updateService.MarkNotified(update);
+
+            var result = MessageBox.Show(
+                $"Hay una nueva versión disponible: v{update.Version}.\n\n¿Desea descargar e instalar ahora?\n\nLa aplicación se cerrará para completar la actualización.",
+                "Actualización disponible",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Information);
+
+            if (result != DialogResult.Yes)
+                return;
+
+            UseWaitCursor = true;
+            Enabled = false;
+
+            var installerPath = await _updateService.DownloadInstallerAsync(update, progress: null, cts.Token);
+            if (string.IsNullOrWhiteSpace(installerPath) || !File.Exists(installerPath))
+            {
+                MessageBox.Show(
+                    "No se pudo descargar el instalador.\n\nPuede descargarlo manualmente desde la página de Releases.",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return;
+            }
+
+            if (!_updateService.RunInstallerAndExit(installerPath))
+            {
+                MessageBox.Show(
+                    "No se pudo ejecutar el instalador automáticamente.\n\nPuede ejecutarlo manualmente desde: " + installerPath,
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return;
+            }
+
+            Application.Exit();
+        }
+        catch
+        {
+            if (interactive)
+            {
+                MessageBox.Show(
+                    "No se pudo verificar actualizaciones en este momento.",
+                    "Actualizaciones",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+        }
+        finally
+        {
+            UseWaitCursor = false;
+            Enabled = true;
         }
     }
 

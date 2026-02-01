@@ -1,3 +1,48 @@
+# Convertidor de Ordenes (CSV/XLSX)
+
+## Estructura de archivos (Entrega)
+
+Para soportar múltiples updates sin perder datos, la app separa **binarios** (instalación) de **datos** (carpeta persistente).
+
+Se instala un archivo "semilla" junto al ejecutable:
+
+- `DB/Empresas.xlsx` (base de empresas)
+- `PrestacionesMap.csv` (map de prestaciones)
+
+En ejecución, la base real se guarda en **AppData (por usuario)** para no pisarse con updates:
+
+- `%LOCALAPPDATA%\Seres Salud\ConvertidorDeOrdenes\DB\Empresas.xlsx`
+
+Si es la primera vez, se copia desde la semilla `DB/Empresas.xlsx`.
+
+## Build / Publish
+
+Genera un publish listo para copiar o para usar en el instalador:
+
+- `powershell -ExecutionPolicy Bypass -File .\scripts\publish.ps1`
+
+Esto genera la salida en `ConvertidorDeOrdenes\artifacts\publish` e incluye `DB\Empresas.xlsx` y `PrestacionesMap.csv`.
+
+## Instalador (Inno Setup)
+
+El repo incluye un script de Inno Setup para generar un instalador que crea las carpetas y copia todos los archivos del publish.
+
+Prerequisito:
+- Instalar **Inno Setup 6** (para tener `ISCC.exe`).
+
+Generar instalador:
+
+- `powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1`
+
+El instalador queda en la carpeta `ConvertidorDeOrdenes\Installer`.
+
+## Updates (corporativo)
+
+La app puede buscar nuevas versiones en **GitHub Releases** (tag `vX.Y.Z`) y, si hay una versión nueva, descarga y ejecuta el instalador.
+
+Notas:
+- Para repos privados, configurar token en variable de entorno `SERESSALUD_GITHUB_TOKEN`.
+- El asset del release debe llamarse `ConvertidorDeOrdenes-Setup.exe`.
 # 🏥 ConvertidorDeOrdenes - Seres Salud
 
 <div align="center">
@@ -48,7 +93,6 @@ Software de escritorio para Windows que automatiza la conversión de planillas m
 - ✅ **Normalización automática** - Provincias, localidades, prestaciones
 - ✅ **Mapeo de prestaciones** - Configuración vía PrestacionesMap.csv
 - ✅ **Reglas de negocio** - Truncado de campos, limpieza de formatos
-- ✅ **Detección de duplicados** - Identifica registros repetidos
 
 ### 🖥️ Interfaz Moderna
 - ✅ **Diseño profesional** - UI moderna con Segoe UI y colores corporativos
@@ -154,7 +198,7 @@ Colocar los siguientes archivos en la **misma carpeta del ejecutable** (.exe):
 
 #### 1️⃣ **Empresas.xlsx** (Base de Datos de Empresas)
 
-**Ubicación**: Misma carpeta que el .exe o hasta 3 niveles superiores
+**Ubicación**: Misma carpeta que el .exe (la aplicación busca hacia arriba en las carpetas superiores y elige la copia más probable si hay varias)
 
 **Formato**:
 
@@ -343,6 +387,9 @@ ConvertidorDeOrdenes/
 │   │   └── CompanyListForm.cs         # Administración CRUD
 │   └── Program.cs                     # Entry point
 │
+├── 📁 ParserTester/                   # Consola para probar rápidamente los parsers
+│   └── Program.cs                     # Ejemplo de uso de CsvOrderParser
+│
 ├── 📁 logs/                           # Logs generados
 ├── Empresas.xlsx                      # Base de datos empresas
 ├── PrestacionesMap.csv                # Mapeo prestaciones
@@ -367,7 +414,7 @@ ConvertidorDeOrdenes/
 
 | Col | Campo | Req | Descripción | Transformaciones |
 |-----|-------|-----|-------------|------------------|
-| **A** | CuitEmpleador | ✅ | CUIT del empleador | Validación formato XX-XXXXXXXX-X |
+| **A** | CuitEmpleador | ✅ | CUIT del empleador | Validación de longitud (11 dígitos numéricos) |
 | **B** | CIIU | ❌ | Código CIIU de actividad | - |
 | **C** | Empleador | ✅ | Razón social | Limpieza de formato "NRO - NOMBRE" |
 | **D** | Calle | ❌ | Domicilio | - |
@@ -380,7 +427,7 @@ ConvertidorDeOrdenes/
 | **K** | Contrato | ❌ | Número de contrato | - |
 | **L** | NroEstablecimiento | ❌ | N° de establecimiento | Extracción desde "NRO - NOMBRE" |
 | **M** | Frecuencia | ✅ | A/S/R (Anual/Semestral/Reconf) | Del wizard |
-| **N** | Cuil | ✅ | CUIL del trabajador | Validación formato |
+| **N** | Cuil | ✅ | CUIL del trabajador | Validación de longitud (11 dígitos numéricos) |
 | **O** | NroDocumento | ❌ | Número de documento | ⚠️ Siempre vacío en salida |
 | **P** | TrabajadorApellidoNombre | ✅ | Apellido y nombre completo | - |
 | **Q** | Riesgo | ✅ | Descripción del riesgo | Max 90 chars (trunca con warning) |
@@ -389,7 +436,7 @@ ConvertidorDeOrdenes/
 | **T** | Prestacion | ✅ | Prestación médica | Limpieza cod:, acentos, mapeo |
 | **U** | HistoriaClinica | ❌ | Número de HC | - |
 | **V** | Mail | ❌ | Email de contacto | - |
-| **W** | Referente | ✅ | Referente | ⚠️ Siempre vacío en salida |
+| **W** | Referente | ❌ | Referente | ⚠️ Hoy se exporta vacío, reservada para futuras integraciones |
 | **X** | DescripcionError | ❌ | Mensajes de validación | Solo internos |
 | **Y** | Id | ❌ | Identificador único | Por definir |
 
@@ -466,13 +513,15 @@ Salida:   NroEstablecimiento = "2"
 
 | Entrada | Salida |
 |---------|--------|
-| BA, B A, BS AS, BS.AS. | BUENOS AIRES |
-| CF, CABA | CAPITAL FEDERAL |
-| CBA, COR | CORDOBA |
-| SF, SFE | SANTA FE |
+| BA, B A, BS AS, BS. AS. | BUENOS AIRES |
+| CF, C.F., CABA, CDAD. DE BS AS, CIUDAD DE BUENOS AIRES | CAPITAL FEDERAL |
+| CBA | CORDOBA |
+| STA FE, SF | SANTA FE |
 | MZA | MENDOZA |
 | TUC | TUCUMAN |
-| SDE | SANTIAGO DEL ESTERO |
+| SDE, STGO DEL ESTERO | SANTIAGO DEL ESTERO |
+| SL | SAN LUIS |
+| SJ | SAN JUAN |
 
 **Limpieza de formato:**
 ```
@@ -497,11 +546,13 @@ Si len(Riesgo) > 90:
 
 ### 6. CUIL/CUIT
 
-**Normalización de formato:**
+**Validación básica:**
 ```
-"20259133867"       → "20-25913386-7"
-"20-25913386-7"     → "20-25913386-7"
+"2025913386"        → Warning: "Formato de CUIT posiblemente inválido: 2025913386" (menos de 11 dígitos)
+"20-25913386-7"     → OK (11 dígitos numéricos)
 ```
+
+El sistema conserva el formato de CUIT/CUIL tal como viene en el archivo de entrada; solo verifica que contenga exactamente 11 dígitos numéricos y, si no, genera un warning.
 
 ---
 
@@ -522,28 +573,28 @@ Formato de nombre: `log_yyyyMMdd_HHmmss.txt`
 ### Contenido del Log
 
 ```
-[09:30:25] === Inicio de sesión ===
-[09:30:25] Tipo de carga: AnualesSemestrales
-[09:30:25] Frecuencia: A
-[09:30:25] ART: La Segunda
-[09:30:25] Referente: 
-[09:30:25] Empresas.xlsx: C:\Users\...\Empresas.xlsx
-[09:30:25] Empresas cargadas: 47
-[09:30:26] Analizando archivo: C:\Users\...\solicitudes_pendiente_prestador9671920260102001935.xlsx
-[09:30:27] Filas parseadas: 14
-[09:30:27] WARNING: Prestación sin mapeo: RX DE TORAX DE FRENTE
-[09:30:27] WARNING: Riesgo truncado a 90 caracteres para fila 5
-[09:30:28] ERROR: CUIT Empleador es obligatorio (fila 8)
-[09:30:32] Archivo exportado: C:\Users\...\SALIDA_20260131_093032.xls
+[09:30:25] [INFO] === Inicio de sesión ===
+[09:30:25] [INFO] Tipo de carga: AnualesSemestrales
+[09:30:25] [INFO] Frecuencia: A
+[09:30:25] [INFO] ART: La Segunda
+[09:30:25] [INFO] Referente: 
+[09:30:25] [INFO] Empresas.xlsx: C:\Users\...\Empresas.xlsx
+[09:30:25] [INFO] Empresas cargadas: 47
+[09:30:26] [INFO] Analizando archivo: C:\Users\...\solicitudes_pendiente_prestador9671920260102001935.xlsx
+[09:30:27] [INFO] Filas parseadas: 14
+[09:30:27] [WARNING] Prestación sin mapeo: RX DE TORAX DE FRENTE
+[09:30:27] [WARNING] Riesgo truncado a 90 caracteres para fila 5
+[09:30:28] [ERROR] CUIT Empleador es obligatorio (fila 8)
+[09:30:32] [INFO] Archivo exportado: C:\Users\...\SALIDA_20260131_093032.xls
 ```
 
 ### Tipos de Mensajes
 
 | Tipo | Prefijo | Descripción |
 |------|---------|-------------|
-| **INFO** | `[HH:mm:ss]` | Operaciones normales |
-| **WARNING** | `[HH:mm:ss] WARNING:` | Advertencias (no bloquean) |
-| **ERROR** | `[HH:mm:ss] ERROR:` | Errores críticos |
+| **INFO** | `[HH:mm:ss] [INFO]` | Operaciones normales |
+| **WARNING** | `[HH:mm:ss] [WARNING]` | Advertencias (no bloquean) |
+| **ERROR** | `[HH:mm:ss] [ERROR]` | Errores críticos |
 
 ---
 

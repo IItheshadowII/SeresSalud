@@ -305,51 +305,77 @@ public class CompanyRepositoryExcel
     }
 
     /// <summary>
-    /// Resuelve la ruta real de Empresas.xlsx buscando hacia arriba desde baseDirectory
+    /// Resuelve la ruta real de Empresas.xlsx.
+    /// Preferimos baseDirectory/DB/Empresas.xlsx (carpeta instalada junto al ejecutable).
+    /// Mantiene compatibilidad buscando copias antiguas hacia arriba si no existe.
     /// </summary>
     private static string ResolveCompaniesFilePath(string baseDirectory)
     {
+        static string PickBestBySize(List<string> candidates)
+        {
+            string best = candidates[0];
+            long bestLen = new FileInfo(best).Length;
+            foreach (var c in candidates)
+            {
+                var len = new FileInfo(c).Length;
+                if (len > bestLen)
+                {
+                    best = c;
+                    bestLen = len;
+                }
+            }
+
+            return best;
+        }
+
+        var preferred = Path.Combine(baseDirectory, "DB", "Empresas.xlsx");
         try
         {
-            // Buscar todas las copias de Empresas.xlsx hacia arriba desde baseDirectory
-            // y elegir la más probable (por tamaño de archivo). Esto evita quedarse con
-            // una copia vacía en bin/Debug si existe una base real en una carpeta superior.
-            var candidates = new List<string>();
+            var preferredDir = Path.GetDirectoryName(preferred);
+            if (!string.IsNullOrWhiteSpace(preferredDir))
+                Directory.CreateDirectory(preferredDir);
 
+            if (File.Exists(preferred))
+                return preferred;
+
+            // Buscar copias en DB/Empresas.xlsx hacia arriba desde baseDirectory.
+            // En desarrollo puede existir una base real en una carpeta superior.
+            var dbCandidates = new List<string>();
             var dir = new DirectoryInfo(baseDirectory);
             while (dir != null)
             {
-                var candidate = Path.Combine(dir.FullName, "Empresas.xlsx");
+                var candidate = Path.Combine(dir.FullName, "DB", "Empresas.xlsx");
                 if (File.Exists(candidate))
-                    candidates.Add(candidate);
+                    dbCandidates.Add(candidate);
 
                 dir = dir.Parent;
             }
 
-            if (candidates.Count > 0)
-            {
-                string best = candidates[0];
-                long bestLen = new FileInfo(best).Length;
-                foreach (var c in candidates)
-                {
-                    var len = new FileInfo(c).Length;
-                    if (len > bestLen)
-                    {
-                        best = c;
-                        bestLen = len;
-                    }
-                }
+            if (dbCandidates.Count > 0)
+                return PickBestBySize(dbCandidates);
 
-                return best;
+            // Compatibilidad: estructura antigua (Empresas.xlsx suelto).
+            var legacyCandidates = new List<string>();
+            dir = new DirectoryInfo(baseDirectory);
+            while (dir != null)
+            {
+                var candidate = Path.Combine(dir.FullName, "Empresas.xlsx");
+                if (File.Exists(candidate))
+                    legacyCandidates.Add(candidate);
+
+                dir = dir.Parent;
             }
+
+            if (legacyCandidates.Count > 0)
+                return PickBestBySize(legacyCandidates);
         }
         catch
         {
             // Ignorar y caer al fallback
         }
 
-        // Fallback: usar baseDirectory aunque no exista todavía
-        return Path.Combine(baseDirectory, "Empresas.xlsx");
+        // Fallback: usar la ruta preferida aunque no exista todavía
+        return preferred;
     }
 
     private static string NormalizeName(string? text)
