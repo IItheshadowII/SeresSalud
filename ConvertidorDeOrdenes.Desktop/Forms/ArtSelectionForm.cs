@@ -1,5 +1,7 @@
 namespace ConvertidorDeOrdenes.Desktop.Forms;
 
+using ConvertidorDeOrdenes.Desktop.Services;
+
 /// <summary>
 /// Primera ventana: selección de ART. De esta elección depende el flujo de la app.
 /// </summary>
@@ -21,6 +23,7 @@ public sealed class ArtSelectionForm : Form
     private void InitializeComponent()
     {
         Text = "ConvertidorDeOrdenes - Selección de ART";
+        Icon = AppIcon.TryGet();
         Size = new Size(500, 280);
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;

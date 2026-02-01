@@ -47,6 +47,7 @@ public partial class MainForm : Form
         _dataDirectory = AppPaths.DataRootDirectory;
 
         InitializeComponent();
+        AppIcon.Apply(this);
         InitializeServices();
     }
 
@@ -54,6 +55,7 @@ public partial class MainForm : Form
     {
         var version = AppPaths.GetCurrentVersion();
         this.Text = $"ConvertidorDeOrdenes v{version} - Procesamiento";
+        this.Icon = AppIcon.TryGet();
         this.Size = new Size(1250, 750);
         this.MinimumSize = new Size(1250, 750);
         this.StartPosition = FormStartPosition.CenterScreen;

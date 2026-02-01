@@ -1,5 +1,7 @@
 namespace ConvertidorDeOrdenes.Desktop.Forms;
 
+using ConvertidorDeOrdenes.Desktop.Services;
+
 /// <summary>
 /// Formulario de bienvenida y configuración inicial (Wizard)
 /// </summary>
@@ -34,6 +36,7 @@ public partial class WizardForm : Form
     private void InitializeComponent()
     {
         this.Text = "ConvertidorDeOrdenes - Configuración Inicial";
+        this.Icon = AppIcon.TryGet();
         this.Size = new Size(580, 420);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;

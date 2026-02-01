@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using ConvertidorDeOrdenes.Core.Models;
 using ConvertidorDeOrdenes.Core.Services;
+using ConvertidorDeOrdenes.Desktop.Services;
 
 namespace ConvertidorDeOrdenes.Desktop.Forms;
 
@@ -30,6 +31,7 @@ public sealed class CompanyListForm : Form
     private void InitializeComponent()
     {
         Text = "Administración de Empresas";
+        Icon = AppIcon.TryGet();
         Size = new Size(980, 580);
         MinimumSize = new Size(980, 580);
         StartPosition = FormStartPosition.CenterParent;

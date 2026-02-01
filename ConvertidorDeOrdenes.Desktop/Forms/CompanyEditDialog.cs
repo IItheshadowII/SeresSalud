@@ -1,5 +1,6 @@
 using ConvertidorDeOrdenes.Core.Models;
 using ConvertidorDeOrdenes.Core.Services;
+using ConvertidorDeOrdenes.Desktop.Services;
 
 namespace ConvertidorDeOrdenes.Desktop.Forms;
 
@@ -37,6 +38,7 @@ public partial class CompanyEditDialog : Form
     private void InitializeComponent()
     {
         this.Text = "Datos de Empresa";
+        this.Icon = AppIcon.TryGet();
         this.Size = new Size(610, 640);
         this.StartPosition = FormStartPosition.CenterParent;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;

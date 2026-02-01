@@ -39,6 +39,7 @@ public sealed class CuitOnlineLookupForm : Form
     private async void InitializeComponent()
     {
         Text = "Buscar CUIT online - La Segunda";
+        Icon = AppIcon.TryGet();
         Size = new Size(1100, 700);
         MinimumSize = new Size(900, 600);
         StartPosition = FormStartPosition.CenterParent;

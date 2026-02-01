@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using ConvertidorDeOrdenes.Core.Models;
 using ConvertidorDeOrdenes.Core.Services;
+using ConvertidorDeOrdenes.Desktop.Services;
 
 namespace ConvertidorDeOrdenes.Desktop.Forms;
 
@@ -27,6 +28,7 @@ public class CompanyResolutionForm : Form
     private void InitializeComponent()
     {
         Text = "Revisión de datos de empresas";
+        Icon = AppIcon.TryGet();
         Size = new Size(1100, 650);
         MinimumSize = new Size(1100, 650);
         StartPosition = FormStartPosition.CenterParent;
