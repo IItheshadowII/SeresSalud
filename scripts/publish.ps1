@@ -39,5 +39,9 @@ dotnet publish $desktopProj `
   -o $outDir `
   @extraArgs
 
+if ($LASTEXITCODE -ne 0) {
+  throw "dotnet publish falló (ExitCode=$LASTEXITCODE)"
+}
+
 Write-Host "OK. Publish generado en: $outDir" -ForegroundColor Green
 Write-Host "Verificá que existan: DB\\Empresas.xlsx y PrestacionesMap.csv dentro del publish." -ForegroundColor Yellow

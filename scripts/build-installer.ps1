@@ -17,6 +17,10 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 # 1) Publish
 & (Join-Path $PSScriptRoot 'publish.ps1') -Configuration $Configuration -Runtime $Runtime -SelfContained:$SelfContained -Version $Version
 
+if ($LASTEXITCODE -ne 0) {
+  throw "publish.ps1 falló (ExitCode=$LASTEXITCODE)"
+}
+
 # 2) Compilar instalador (Inno Setup)
 $programFilesX86 = [Environment]::GetFolderPath('ProgramFilesX86')
 $programFiles    = [Environment]::GetFolderPath('ProgramFiles')
@@ -52,6 +56,10 @@ $isccArgs += "/F$outputBaseFilename"
 $isccArgs += $iss
 
 & $iscc @isccArgs
+
+if ($LASTEXITCODE -ne 0) {
+  throw "ISCC.exe falló (ExitCode=$LASTEXITCODE)"
+}
 
 $expectedInstaller = Join-Path $outputDir ($outputBaseFilename + '.exe')
 if (-not (Test-Path $expectedInstaller)) {

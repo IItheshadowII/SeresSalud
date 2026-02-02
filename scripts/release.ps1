@@ -87,6 +87,10 @@ Update-DesktopVersion -Version $Version
 Write-Host "Ejecutando build-installer.ps1..." -ForegroundColor Green
 & (Join-Path $scriptRoot 'build-installer.ps1') -Version $Version
 
+if ($LASTEXITCODE -ne 0) {
+    throw "build-installer.ps1 falló (ExitCode=$LASTEXITCODE)"
+}
+
 # 3) Commit (si hay cambios)
 Write-Host "Revisando cambios en git..." -ForegroundColor Green
 
