@@ -35,19 +35,12 @@ jobs:
       - name: Verify installer output
         shell: pwsh
         run: |
-          Write-Host "Listing Installer folder..." -ForegroundColor Cyan
-          if (Test-Path "Installer") {
-            Get-ChildItem -Path "Installer" -Force | Format-Table -AutoSize | Out-String | Write-Host
-          } else {
-            throw "Installer folder not found"
-          }
-
-          Write-Host "Searching for installer..." -ForegroundColor Cyan
-          $candidates = Get-ChildItem -Path "Installer" -Recurse -File -Filter "ConvertidorDeOrdenes-Setup.exe" -ErrorAction SilentlyContinue
+          Write-Host "Searching for installer in workspace..." -ForegroundColor Cyan
+          $candidates = Get-ChildItem -Path "." -Recurse -File -Filter "ConvertidorDeOrdenes-Setup.exe" -ErrorAction SilentlyContinue
           if (-not $candidates -or $candidates.Count -eq 0) {
-            Write-Host "Installer not found. Diagnostics listing Installer recursively..." -ForegroundColor Yellow
-            Get-ChildItem -Path "Installer" -Recurse -Force | Select-Object FullName,Length | Out-String | Write-Host
-            throw "Expected installer not found under Installer/**/ConvertidorDeOrdenes-Setup.exe"
+            Write-Host "Installer not found. Diagnostics listing .exe under workspace..." -ForegroundColor Yellow
+            Get-ChildItem -Path "." -Recurse -File -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object FullName,Length | Out-String | Write-Host
+            throw "Expected installer not found under **/ConvertidorDeOrdenes-Setup.exe"
           }
 
           Write-Host "Found installer candidate(s):" -ForegroundColor Green
@@ -59,4 +52,4 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
-            Installer/**/ConvertidorDeOrdenes-Setup.exe
+            **/ConvertidorDeOrdenes-Setup.exe
