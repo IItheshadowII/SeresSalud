@@ -35,16 +35,19 @@ jobs:
       - name: Verify installer output
         shell: pwsh
         run: |
-          Write-Host "Searching for installer in workspace..." -ForegroundColor Cyan
-          $candidates = Get-ChildItem -Path "." -Recurse -File -Filter "ConvertidorDeOrdenes-Setup.exe" -ErrorAction SilentlyContinue
-          if (-not $candidates -or $candidates.Count -eq 0) {
-            Write-Host "Installer not found. Diagnostics listing .exe under workspace..." -ForegroundColor Yellow
-            Get-ChildItem -Path "." -Recurse -File -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object FullName,Length | Out-String | Write-Host
-            throw "Expected installer not found under **/ConvertidorDeOrdenes-Setup.exe"
+          $installer = "Installer/Output/ConvertidorDeOrdenes-Setup.exe"
+          if (-not (Test-Path $installer)) {
+            Write-Host "Installer not found at expected path: $installer" -ForegroundColor Red
+            Write-Host "Listing Installer/Output..." -ForegroundColor Yellow
+            if (Test-Path "Installer/Output") {
+              Get-ChildItem -Path "Installer/Output" -Force | Select-Object FullName,Length | Out-String | Write-Host
+            } else {
+              Write-Host "Installer/Output folder not found" -ForegroundColor Yellow
+            }
+            throw "Expected installer not found: $installer"
           }
 
-          Write-Host "Found installer candidate(s):" -ForegroundColor Green
-          $candidates | Select-Object FullName,Length | Format-Table -AutoSize | Out-String | Write-Host
+          Write-Host "OK. Installer present: $installer" -ForegroundColor Green
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -52,4 +55,4 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
-            **/ConvertidorDeOrdenes-Setup.exe
+            Installer/Output/ConvertidorDeOrdenes-Setup.exe

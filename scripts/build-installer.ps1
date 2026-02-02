@@ -36,14 +36,29 @@ Write-Host "OK. ISCC encontrado en: $iscc" -ForegroundColor Green
 
 $iss = Join-Path $repoRoot 'Installer\ConvertidorDeOrdenes.iss'
 
+$outputDir = Join-Path $repoRoot 'Installer\Output'
+New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
+
+$outputBaseFilename = 'ConvertidorDeOrdenes-Setup'
+
 Write-Host "Compilando instalador con: $iscc" -ForegroundColor Cyan
 
 $isccArgs = @()
 if ($Version) {
   $isccArgs += "/DMyAppVersion=$Version"
 }
+$isccArgs += "/O$outputDir"
+$isccArgs += "/F$outputBaseFilename"
 $isccArgs += $iss
 
 & $iscc @isccArgs
+
+$expectedInstaller = Join-Path $outputDir ($outputBaseFilename + '.exe')
+if (-not (Test-Path $expectedInstaller)) {
+  Write-Host "No se encontró el instalador esperado en: $expectedInstaller" -ForegroundColor Red
+  Write-Host "Contenido de ${outputDir}:" -ForegroundColor Yellow
+  Get-ChildItem -Path $outputDir -Force | Select-Object FullName,Length | Out-String | Write-Host
+  throw "Fallo al generar el instalador (archivo faltante): $expectedInstaller"
+}
 
 Write-Host "OK. El instalador queda en la carpeta Installer (OutputBaseFilename)." -ForegroundColor Green
