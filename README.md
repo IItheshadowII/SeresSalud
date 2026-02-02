@@ -1,48 +1,3 @@
-# Convertidor de Ordenes (CSV/XLSX)
-
-## Estructura de archivos (Entrega)
-
-Para soportar múltiples updates sin perder datos, la app separa **binarios** (instalación) de **datos** (carpeta persistente).
-
-Se instala un archivo "semilla" junto al ejecutable:
-
-- `DB/Empresas.xlsx` (base de empresas)
-- `PrestacionesMap.csv` (map de prestaciones)
-
-En ejecución, la base real se guarda en **AppData (por usuario)** para no pisarse con updates:
-
-- `%LOCALAPPDATA%\Seres Salud\ConvertidorDeOrdenes\DB\Empresas.xlsx`
-
-Si es la primera vez, se copia desde la semilla `DB/Empresas.xlsx`.
-
-## Build / Publish
-
-Genera un publish listo para copiar o para usar en el instalador:
-
-- `powershell -ExecutionPolicy Bypass -File .\scripts\publish.ps1`
-
-Esto genera la salida en `ConvertidorDeOrdenes\artifacts\publish` e incluye `DB\Empresas.xlsx` y `PrestacionesMap.csv`.
-
-## Instalador (Inno Setup)
-
-El repo incluye un script de Inno Setup para generar un instalador que crea las carpetas y copia todos los archivos del publish.
-
-Prerequisito:
-- Instalar **Inno Setup 6** (para tener `ISCC.exe`).
-
-Generar instalador:
-
-- `powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1`
-
-El instalador queda en la carpeta `ConvertidorDeOrdenes\Installer`.
-
-## Updates (corporativo)
-
-La app puede buscar nuevas versiones en **GitHub Releases** (tag `vX.Y.Z`) y, si hay una versión nueva, descarga y ejecuta el instalador.
-
-Notas:
-- Para repos privados, configurar token en variable de entorno `SERESSALUD_GITHUB_TOKEN`.
-- El asset del release debe llamarse `ConvertidorDeOrdenes-Setup.exe`.
 # 🏥 ConvertidorDeOrdenes - Seres Salud
 
 <div align="center">
@@ -129,11 +84,14 @@ Software de escritorio para Windows que automatiza la conversión de planillas m
 
 ## 📦 Instalación
 
-### Opción 1: Instalación Rápida (Usuarios)
+### Opción 1: Instalador (Recomendado)
 
-1. **Descargar** la última versión compilada desde el repositorio
-2. **Extraer** el archivo ZIP en una carpeta de su preferencia
-3. **Ejecutar** `ConvertidorDeOrdenes.Desktop.exe`
+1. Ir a **GitHub → Releases** y descargar el instalador **ConvertidorDeOrdenes-Setup.exe** (última versión)
+2. Ejecutar el instalador y completar el asistente
+
+Notas importantes:
+- Los **datos del usuario** (por ejemplo la base de empresas) se guardan en `%LOCALAPPDATA%\Seres Salud\ConvertidorDeOrdenes\...` para que no se pierdan al actualizar.
+- El instalador incluye instalación condicional de **WebView2 Runtime** si el equipo no lo tiene.
 
 ### Opción 2: Compilación desde Código (Desarrolladores)
 
@@ -141,6 +99,8 @@ Software de escritorio para Windows que automatiza la conversión de planillas m
 - Visual Studio 2022 o superior
 - .NET 8 SDK instalado
 - Git (opcional)
+
+> El repo incluye `global.json` para fijar el SDK usado por `dotnet` y evitar incompatibilidades.
 
 #### Pasos de Compilación
 
@@ -187,6 +147,39 @@ dotnet publish ConvertidorDeOrdenes.Desktop\ConvertidorDeOrdenes.Desktop.csproj 
 
 # La carpeta "portable" contendrá todos los archivos necesarios
 ```
+
+---
+
+## 🚀 Releases y Updates
+
+### Auto-update (in-app)
+
+La app consulta el endpoint de **GitHub Releases** (latest) y, si hay una versión más nueva, descarga y ejecuta el instalador.
+
+Requisitos:
+- Los releases deben estar tageados como `vX.Y.Z`
+- El release debe incluir el asset **ConvertidorDeOrdenes-Setup.exe**
+- Si el repo fuese privado, se puede usar `SERESSALUD_GITHUB_TOKEN`
+
+### Release con 1 comando (local)
+
+Este script automatiza todo:
+
+```powershell
+pwsh -ExecutionPolicy Bypass -File .\scripts\release.ps1 -Version 1.2.3
+```
+
+Hace:
+1) actualiza versión en el csproj
+2) publica (`scripts/publish.ps1`)
+3) genera instalador (`scripts/build-installer.ps1` → `Installer/Output/ConvertidorDeOrdenes-Setup.exe`)
+4) commit + tag `v1.2.3` + push
+
+### CI (GitHub Actions)
+
+El workflow de release (por tags `v*`) genera el instalador y crea el GitHub Release adjuntando el setup.
+
+Nota: el instalador offline de **WebView2 Runtime** no se versiona en git (está ignorado) y el workflow lo descarga durante el build.
 
 ---
 
