@@ -204,7 +204,7 @@ public partial class WizardForm : Form
 
         if (rbReconfirmatorios.Checked)
         {
-            cbFrecuencia.Items.Add("R - Reconfirmatorio");
+            cbFrecuencia.Items.Add("A - Reconfirmatorio");
             cbFrecuencia.SelectedIndex = 0;
             cbFrecuencia.Enabled = false;
         }

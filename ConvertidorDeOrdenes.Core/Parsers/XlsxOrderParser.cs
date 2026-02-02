@@ -19,13 +19,8 @@ public class XlsxOrderParser
         {
             using var workbook = new XLWorkbook(filePath);
 
-            // Ruta de debug para CP
-            var debugCpPath = Path.Combine(Path.GetDirectoryName(filePath) ?? "", "cp_debug.txt");
-            try
-            {
-                File.WriteAllText(debugCpPath, $"Archivo: {filePath}{Environment.NewLine}");
-            }
-            catch { }
+            // Logging de debug CP deshabilitado (antes generaba cp_debug.txt junto al archivo de entrada)
+            string? debugCpPath = null;
 
             // Buscar hoja "Resumen" o primera hoja
             IXLWorksheet? resumenSheet = null;
@@ -50,7 +45,10 @@ public class XlsxOrderParser
                 try
                 {
                     var e3 = resumenSheet.Cell(3, 5).GetString();
-                    File.AppendAllText(debugCpPath, $"Hoja Resumen encontrada. E3='{e3}'{Environment.NewLine}");
+                    if (debugCpPath != null)
+                    {
+                        File.AppendAllText(debugCpPath, $"Hoja Resumen encontrada. E3='{e3}'{Environment.NewLine}");
+                    }
                 }
                 catch { }
 
