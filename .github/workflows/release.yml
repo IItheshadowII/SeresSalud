@@ -25,6 +25,37 @@ jobs:
       - name: Install Inno Setup
         run: choco install innosetup -y
 
+      - name: Download WebView2 Runtime (x64)
+        shell: pwsh
+        run: |
+          $dest = "Installer/MicrosoftEdgeWebView2RuntimeInstallerX64.exe"
+          if (Test-Path $dest) {
+            Write-Host "WebView2 runtime installer already present: $dest" -ForegroundColor Green
+            exit 0
+          }
+
+          New-Item -ItemType Directory -Force -Path "Installer" | Out-Null
+
+          $url = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
+          Write-Host "Downloading WebView2 runtime installer from: $url" -ForegroundColor Cyan
+
+          try {
+            Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing
+          } catch {
+            Write-Host "Invoke-WebRequest failed, retrying with curl..." -ForegroundColor Yellow
+            & curl.exe -L $url -o $dest
+          }
+
+          if (-not (Test-Path $dest)) {
+            throw "Failed to download WebView2 runtime installer to: $dest"
+          }
+
+          $len = (Get-Item $dest).Length
+          if ($len -lt 1024*1024) {
+            throw "Downloaded file seems too small ($len bytes): $dest"
+          }
+          Write-Host "OK. Downloaded WebView2 runtime installer ($len bytes)" -ForegroundColor Green
+
       - name: Build publish + installer
         shell: pwsh
         run: |
