@@ -108,7 +108,8 @@ if (-not [string]::IsNullOrWhiteSpace($changes)) {
     Invoke-Git "add -A"
 
     try {
-        Invoke-Git "commit -m \"Release $Version\""
+        $msg = "Release $Version"
+        Invoke-Git ("commit -m ""{0}""" -f $msg)
     } catch {
         # Si no hay nada que commitear (por ejemplo porque solo había outputs ignorados), continuar.
         Write-Warning "No se pudo crear commit (posible 'nothing to commit'): $_"

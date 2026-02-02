@@ -32,6 +32,24 @@ jobs:
           $version = $tag.TrimStart('v','V')
           pwsh -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -Configuration Release -Runtime win-x64 -SelfContained -Version $version
 
+      - name: Verify installer output
+        shell: pwsh
+        run: |
+          Write-Host "Listing Installer/Output..." -ForegroundColor Cyan
+          if (Test-Path "Installer/Output") {
+            Get-ChildItem -Path "Installer/Output" -Force | Format-Table -AutoSize | Out-String | Write-Host
+          } else {
+            Write-Host "Installer/Output folder not found" -ForegroundColor Yellow
+          }
+
+          $installer = "Installer/Output/ConvertidorDeOrdenes-Setup.exe"
+          if (-not (Test-Path $installer)) {
+            Write-Host "Installer file not found at: $installer" -ForegroundColor Red
+            Write-Host "Listing Installer folder recursively for diagnostics..." -ForegroundColor Cyan
+            Get-ChildItem -Path "Installer" -Recurse -Force | Select-Object FullName,Length | Out-String | Write-Host
+            throw "Expected installer not found: $installer"
+          }
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
