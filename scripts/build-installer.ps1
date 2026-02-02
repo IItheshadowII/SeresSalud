@@ -18,16 +18,22 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 & (Join-Path $PSScriptRoot 'publish.ps1') -Configuration $Configuration -Runtime $Runtime -SelfContained:$SelfContained -Version $Version
 
 # 2) Compilar instalador (Inno Setup)
-$innoCandidates = @(
-  "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe",
-  "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
-) | Where-Object { Test-Path $_ }
+$programFilesX86 = [Environment]::GetFolderPath('ProgramFilesX86')
+$programFiles    = [Environment]::GetFolderPath('ProgramFiles')
 
-if ($innoCandidates.Count -eq 0) {
+$possible = @(
+  (Join-Path $programFilesX86 'Inno Setup 6\ISCC.exe'),
+  (Join-Path $programFiles    'Inno Setup 6\ISCC.exe')
+)
+
+$iscc = $possible | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if (-not $iscc) {
   throw "No se encontró ISCC.exe (Inno Setup). Instalá Inno Setup 6 y reintentá."
 }
 
-$iscc = $innoCandidates[0]
+Write-Host "OK. ISCC encontrado en: $iscc" -ForegroundColor Green
+
 $iss = Join-Path $repoRoot 'Installer\ConvertidorDeOrdenes.iss'
 
 Write-Host "Compilando instalador con: $iscc" -ForegroundColor Cyan
