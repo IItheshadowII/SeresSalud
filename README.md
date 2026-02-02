@@ -154,12 +154,32 @@ dotnet publish ConvertidorDeOrdenes.Desktop\ConvertidorDeOrdenes.Desktop.csproj 
 
 ### Auto-update (in-app)
 
-La app consulta el endpoint de **GitHub Releases** (latest) y, si hay una versión más nueva, descarga y ejecuta el instalador.
+La app se actualiza consultando **GitHub Releases** y ejecutando el **instalador** de la versión más nueva.
 
-Requisitos:
-- Los releases deben estar tageados como `vX.Y.Z`
-- El release debe incluir el asset **ConvertidorDeOrdenes-Setup.exe**
-- Si el repo fuese privado, se puede usar `SERESSALUD_GITHUB_TOKEN`
+Cómo funciona:
+
+1) Al iniciar, hace un chequeo automático (máximo **1 vez cada 24 hs**).
+2) Consulta `https://api.github.com/repos/IItheshadowII/SeresSalud/releases/latest`.
+3) Lee `tag_name` (ej: `v1.0.15`) y lo compara con la versión local.
+4) Si hay update, muestra un diálogo de confirmación.
+5) Si aceptás, descarga el instalador a la carpeta temporal:
+    - `%TEMP%\ConvertidorDeOrdenes-Setup-<version>.exe`
+6) Ejecuta el instalador y **cierra la aplicación** para completar la actualización.
+
+Notas:
+- La notificación se “recuerda” para no insistir con la misma versión.
+- El estado del updater se guarda en `%LOCALAPPDATA%\Seres Salud\ConvertidorDeOrdenes\update_state.json`.
+- Los datos del usuario (base de empresas, logs, etc.) se guardan en `%LOCALAPPDATA%...`, así que los updates no deberían borrarlos.
+- Si la descarga/ejecución falla, se puede instalar manualmente bajando **ConvertidorDeOrdenes-Setup.exe** desde la página de Releases.
+
+Chequeo manual:
+- Menú **Ayuda → Buscar actualizaciones...** (muestra “No hay actualizaciones disponibles” si ya estás al día).
+
+Requisitos para que funcione:
+- Los releases deben estar tageados como `vX.Y.Z`.
+- El release debe incluir un asset instalador. Se prioriza el nombre exacto: **ConvertidorDeOrdenes-Setup.exe**.
+- Si el repo es privado o el entorno corporativo bloquea GitHub, configurar un token:
+    - Variable de entorno `SERESSALUD_GITHUB_TOKEN` (o `GITHUB_TOKEN`) con permisos para leer releases.
 
 ### Release con 1 comando (local)
 
