@@ -6,6 +6,7 @@ public sealed class UpdateInfo
 {
     public required Version Version { get; init; }
     public required string InstallerUrl { get; init; }
+    public string? InstallerApiUrl { get; init; }
     public required string ReleaseUrl { get; init; }
 }
 

@@ -59,6 +59,7 @@ public sealed class UpdateService
         {
             Version = latest,
             InstallerUrl = asset.browser_download_url,
+            InstallerApiUrl = asset.url,
             ReleaseUrl = release.html_url ?? $"https://github.com/{Owner}/{Repo}/releases"
         };
     }
@@ -83,13 +84,24 @@ public sealed class UpdateService
     {
         var token = GetGitHubToken();
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, update.InstallerUrl);
+        // Para repos privados, conviene descargar assets vía API con Accept: application/octet-stream
+        // usando el token, para evitar flujos de descarga que requieren sesión/cookies.
+        var downloadUrl = (!string.IsNullOrWhiteSpace(token) && !string.IsNullOrWhiteSpace(update.InstallerApiUrl))
+            ? update.InstallerApiUrl
+            : update.InstallerUrl;
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
         request.Headers.UserAgent.Add(new ProductInfoHeaderValue("ConvertidorDeOrdenes", "1.0"));
 
         if (!string.IsNullOrWhiteSpace(token))
         {
-            // En releases privadas puede requerirse auth.
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            if (!string.IsNullOrWhiteSpace(update.InstallerApiUrl))
+            {
+                request.Headers.Accept.Clear();
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
+            }
         }
 
         using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
@@ -166,7 +178,11 @@ public sealed class UpdateService
 
     private static string? GetGitHubToken()
     {
-        // No hardcodear tokens. Para releases privadas, setear env var en la PC corporativa.
+        var stored = GitHubTokenStore.TryLoad(AppPaths.UpdateTokenPath);
+        if (!string.IsNullOrWhiteSpace(stored))
+            return stored;
+
+        // Fallback: variables de entorno para PCs corporativas.
         return Environment.GetEnvironmentVariable("SERESSALUD_GITHUB_TOKEN")
             ?? Environment.GetEnvironmentVariable("GITHUB_TOKEN");
     }

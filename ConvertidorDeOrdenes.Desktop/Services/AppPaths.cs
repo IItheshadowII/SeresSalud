@@ -24,6 +24,7 @@ public static class AppPaths
     public static string LogsDirectory => Path.Combine(DataRootDirectory, "logs");
     public static string WebView2UserDataDirectory => Path.Combine(DataRootDirectory, "WebView2");
     public static string UpdateStatePath => Path.Combine(DataRootDirectory, "update_state.json");
+    public static string UpdateTokenPath => Path.Combine(DataRootDirectory, "github_token.dat");
 
     public static Version GetCurrentVersion()
     {

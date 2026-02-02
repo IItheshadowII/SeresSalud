@@ -50,5 +50,6 @@ internal sealed class GitHubReleaseDto
 internal sealed class GitHubAssetDto
 {
     public string? name { get; set; }
+    public string? url { get; set; }
     public string? browser_download_url { get; set; }
 }

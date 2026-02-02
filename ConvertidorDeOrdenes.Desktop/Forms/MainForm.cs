@@ -104,7 +104,16 @@ public partial class MainForm : Form
 
         var ayudaMenu = new ToolStripMenuItem("Ayuda") { ForeColor = Color.White };
         var buscarActualizacionesItem = new ToolStripMenuItem("Buscar actualizaciones...");
-        buscarActualizacionesItem.Click += async (_, _) => await CheckForUpdatesAsync(interactive: true);
+        buscarActualizacionesItem.Click += async (_, _) =>
+        {
+            using var dlg = new UpdateSettingsDialog();
+            var result = dlg.ShowDialog(this);
+
+            if (result == DialogResult.OK && dlg.StartUpdateCheck)
+            {
+                await CheckForUpdatesAsync(interactive: true);
+            }
+        };
         ayudaMenu.DropDownItems.Add(buscarActualizacionesItem);
         menuStrip.Items.Add(ayudaMenu);
 
