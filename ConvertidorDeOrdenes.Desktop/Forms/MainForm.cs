@@ -27,6 +27,9 @@ public partial class MainForm : Form
 
     private UpdateService? _updateService;
 
+    private Task? _initializationTask;
+    private Exception? _initializationException;
+
     private Label lblArchivo = null!;
     private TextBox txtArchivo = null!;
     private Button btnSeleccionar = null!;
@@ -48,7 +51,9 @@ public partial class MainForm : Form
 
         InitializeComponent();
         AppIcon.Apply(this);
-        InitializeServices();
+
+        // Cargar servicios pesados (Empresas.xlsx, mapeos, etc.) en segundo plano
+        _initializationTask = Task.Run(InitializeServicesBackground);
     }
 
     private void InitializeComponent()
@@ -71,12 +76,23 @@ public partial class MainForm : Form
         empresasMenu.ForeColor = Color.White;
         
         var administrarEmpresasItem = new ToolStripMenuItem("Administrar...");
-        administrarEmpresasItem.Click += (_, _) =>
+        administrarEmpresasItem.Click += async (_, _) =>
         {
+            try
+            {
+                await EnsureInitializedAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error inicializando la base de empresas: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
             if (_companyRepository == null)
             {
-                MessageBox.Show("El repositorio de empresas no está disponible.", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("El repositorio de empresas no está disponible todavía. Espere unos segundos y vuelva a intentar.", "Empresas",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -318,32 +334,59 @@ public partial class MainForm : Form
         }
     }
 
-    private void InitializeServices()
+    private void InitializeServicesBackground()
     {
         try
         {
-            _logger = new Logger(_dataDirectory);
-            _logger.LogInfo("=== Inicio de sesión ===");
-            _logger.LogInfo($"Tipo de carga: {_tipoCarga}");
-            _logger.LogInfo($"Frecuencia: {_frecuencia}");
-            _logger.LogInfo($"ART: {_art}");
-            _logger.LogInfo($"Referente: {_referente}");
-            _logger.LogInfo($"InstallDir: {_installDirectory}");
-            _logger.LogInfo($"DataDir: {_dataDirectory}");
+            var logger = new Logger(_dataDirectory);
+            logger.LogInfo("=== Inicio de sesión ===");
+            logger.LogInfo($"Tipo de carga: {_tipoCarga}");
+            logger.LogInfo($"Frecuencia: {_frecuencia}");
+            logger.LogInfo($"ART: {_art}");
+            logger.LogInfo($"Referente: {_referente}");
+            logger.LogInfo($"InstallDir: {_installDirectory}");
+            logger.LogInfo($"DataDir: {_dataDirectory}");
 
-            _companyRepository = new CompanyRepositoryExcel(_dataDirectory);
-            _logger.LogInfo($"Empresas.xlsx: {_companyRepository.FilePath}");
-            _logger.LogInfo($"Empresas cargadas: {_companyRepository.CompaniesCount}");
+            var companyRepository = new CompanyRepositoryExcel(_dataDirectory);
+            logger.LogInfo($"Empresas.xlsx: {companyRepository.FilePath}");
+            logger.LogInfo($"Empresas cargadas: {companyRepository.CompaniesCount}");
             var prestacionMapper = new PrestacionMapper(_installDirectory);
-            _normalizer = new Normalizer(prestacionMapper);
-            _validator = new Validator();
+            var normalizer = new Normalizer(prestacionMapper);
+            var validator = new Validator();
 
-            _updateService = new UpdateService(new HttpClient(), new UpdateStateStore(AppPaths.UpdateStatePath));
+            var updateService = new UpdateService(new HttpClient(), new UpdateStateStore(AppPaths.UpdateStatePath));
+
+            // Publicar instancias listas
+            _logger = logger;
+            _companyRepository = companyRepository;
+            _normalizer = normalizer;
+            _validator = validator;
+            _updateService = updateService;
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error inicializando servicios: {ex.Message}", "Error",
-                MessageBoxButtons.OK, MessageBoxIcon.Error);
+            _initializationException = ex;
+        }
+    }
+
+    private async Task EnsureInitializedAsync()
+    {
+        var task = _initializationTask;
+        if (task == null)
+            return;
+
+        try
+        {
+            await task.ConfigureAwait(true);
+        }
+        catch
+        {
+            // La excepción real se guarda en _initializationException
+        }
+
+        if (_initializationException != null)
+        {
+            throw _initializationException;
         }
     }
 
@@ -431,12 +474,14 @@ public partial class MainForm : Form
 
             Application.Exit();
         }
-        catch
+        catch (Exception ex)
         {
+            _logger?.LogError($"Error durante la verificación/descarga de actualización: {ex}");
+
             if (interactive)
             {
                 MessageBox.Show(
-                    "No se pudo verificar actualizaciones en este momento.",
+                    "No se pudo completar la actualización.\n\nDetalle técnico: " + ex.Message,
                     "Actualizaciones",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
@@ -449,13 +494,15 @@ public partial class MainForm : Form
         }
     }
 
-    private void BtnAnalizar_Click(object? sender, EventArgs e)
+    private async void BtnAnalizar_Click(object? sender, EventArgs e)
     {
         if (string.IsNullOrWhiteSpace(txtArchivo.Text))
             return;
 
         try
         {
+            await EnsureInitializedAsync();
+
             LogMessage("Iniciando análisis...");
             _logger?.LogInfo($"Analizando archivo: {txtArchivo.Text}");
 

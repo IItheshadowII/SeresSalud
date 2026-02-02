@@ -116,7 +116,7 @@ Software de escritorio para Windows que automatiza la conversión de planillas m
 |-----------|----------------|-------------|
 | **Sistema Operativo** | Windows 10 | Windows 11 |
 | **.NET Runtime** | 8.0 | 8.0 (última) |
-| **RAM** | 4 GB | 8 GB |
+| **RAM** | 4 GB | 4 GB (8 GB para archivos muy grandes) |
 | **Espacio en disco** | 100 MB | 500 MB |
 | **Resolución** | 1280x720 | 1920x1080 |
 
@@ -200,11 +200,11 @@ Colocar los siguientes archivos en la **misma carpeta del ejecutable** (.exe):
 
 **Ubicación**: Misma carpeta que el .exe (la aplicación busca hacia arriba en las carpetas superiores y elige la copia más probable si hay varias)
 
-**Formato**:
+**Formato** (ejemplo totalmente ficticio):
 
-| CUIT | CIIU | Empleador | Calle | CodPostal | Localidad | Provincia | Telefono | Fax | Mail |
-|------|------|-----------|-------|-----------|-----------|-----------|----------|-----|------|
-| 30-71554420-9 | 6209 | Pu innovations srl | Av. Corrientes 1234 | 1605 | MUNRO | BUENOS AIRES | 1162474278 | | info@empresa.com |
+| CUIT          | CIIU | Empleador            | Calle              | CodPostal | Localidad   | Provincia   | Telefono   | Fax | Mail                     |
+|---------------|------|----------------------|--------------------|-----------|-------------|-------------|------------|-----|--------------------------|
+| 30-00000000-0 | 6200 | EMPRESA DEMO S.R.L.  | Calle Ficticia 123 | 1000      | CIUDAD DEMO | PROVINCIA X | 1100000000 |     | contacto@demo-local.test |
 
 **Características**:
 - ✅ Se crea automáticamente vacío si no existe
@@ -217,7 +217,7 @@ Colocar los siguientes archivos en la **misma carpeta del ejecutable** (.exe):
 
 **Ubicación**: Misma carpeta que el .exe
 
-**Formato CSV**:
+**Formato CSV** (ejemplo genérico):
 ```csv
 Origen,Destino
 ACIDO T-T-MUCONICO EN ORINA,ACIDO TT MUCONICO EN ORINA
@@ -293,9 +293,8 @@ Al iniciar la aplicación:
 - 🔵 **Reconfirmatorios/Reevaluaciones** → Archivo CSV
 
 **Frecuencia:** (automática según tipo)
-- **A** - Anual
+- **A** - Anual / Reconfirmatorio
 - **S** - Semestral
-- **R** - Reconfirmatorio
 
 > ⚠️ **Nota**: Referente ya no se solicita al inicio (se deja vacío)
 
@@ -753,27 +752,29 @@ Empresas_backup_20260131_142530.xlsx
 
 ## 📚 Ejemplos de Archivos
 
+> Todos los ejemplos a continuación usan datos completamente ficticios.
+
 ### CSV Reconfirmatorios (ejemplo completo)
 
 ```csv
 Contrato,CUIT,Razón social,Nro. Establecimiento,Nombre establecimiento,Teléfono,CUIL,Nombre Beneficiario,Práctica solicitada,Comentarios,Localidad,Provincia,Teléfono / Celular,Email Beneficiario,Nro Agencia,Email Agencia,Teléfono Agencia
-256669,30-71554420-9,"PU INNOVATIONS S.R.L.",2,"Pu innovations srl","1162474278",20-25913386-7,"BAÑULZ HERNAN DIEGO","ACIDO T-T-MUCONICO EN ORINA cod: L31","REPETIR AC TT MUCONICO","(1605) MUNRO-B A","BUENOS AIRES"," - ","","2240","belgrano@lasegunda.com.ar","1120351500"
-256669,30-71554420-9,"PU INNOVATIONS S.R.L.",2,"Pu innovations srl","1162474278",27-40374167-7,"AGUILAR EUGENIO RAMON","EXAMEN CLINICO PREOCUPACIONAL cod: C06","","(1605) MUNRO-B A","BUENOS AIRES","1162474278","","2240","belgrano@lasegunda.com.ar","1120351500"
+100001,30-00000000-0,"EMPRESA DEMO S.R.L.",1,"Planta Central Demo","1100000000",20-00000000-0,"APELLIDO NOMBRE","ACIDO T-T-MUCONICO EN ORINA cod: L31","Observación de ejemplo","(1000) CIUDAD DEMO","PROVINCIA X","1100000000","empleado@demo-local.test","9999","agencia@demo-local.test","1100000000"
+100002,30-00000000-0,"EMPRESA DEMO S.R.L.",1,"Planta Central Demo","1100000000",27-00000000-0,"OTRO APELLIDO","EXAMEN CLINICO PREOCUPACIONAL cod: C06","","(1000) CIUDAD DEMO","PROVINCIA X","1100000000","empleado2@demo-local.test","9999","agencia@demo-local.test","1100000000"
 ```
 
 ### XLSX Anuales/Semestrales (estructura)
 
-**Hoja "Resumen"**:
-| Solapa | Razón Social | CUIT |
-|--------|--------------|------|
-| 1 | Pu innovations srl | 30-71554420-9 |
-| 2 | ARCE SEGURIDAD | 30-68954321-2 |
+**Hoja "Resumen"** (ejemplo):
+| Solapa | Razón Social        | CUIT          |
+|--------|---------------------|---------------|
+| 1      | EMPRESA DEMO S.R.L. | 30-00000000-0 |
+| 2      | EMPRESA PRUEBA SA   | 30-11111111-1 |
 
-**Hoja "1"** (datos empleados):
-| CUIL | Beneficiario | Riesgo | Examen |
-|------|--------------|--------|--------|
-| 20-25913386-7 | BAÑULZ HERNAN | ADMINISTRATIVO | C06 - EXAMEN CLINICO |
-| 27-40374167-7 | AGUILAR EUGENIO | OPERARIO | C06 - EXAMEN CLINICO |
+**Hoja "1"** (datos empleados ficticios):
+| CUIL         | Beneficiario      | Riesgo         | Examen                 |
+|--------------|-------------------|----------------|------------------------|
+| 20-00000000-0| APELLIDO NOMBRE   | ADMINISTRATIVO | C06 - EXAMEN CLINICO   |
+| 27-00000000-0| OTRO APELLIDO     | OPERARIO       | C06 - EXAMEN CLINICO   |
 
 ---
 
