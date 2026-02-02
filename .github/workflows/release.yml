@@ -35,20 +35,23 @@ jobs:
       - name: Verify installer output
         shell: pwsh
         run: |
-          Write-Host "Listing Installer/Output..." -ForegroundColor Cyan
-          if (Test-Path "Installer/Output") {
-            Get-ChildItem -Path "Installer/Output" -Force | Format-Table -AutoSize | Out-String | Write-Host
+          Write-Host "Listing Installer folder..." -ForegroundColor Cyan
+          if (Test-Path "Installer") {
+            Get-ChildItem -Path "Installer" -Force | Format-Table -AutoSize | Out-String | Write-Host
           } else {
-            Write-Host "Installer/Output folder not found" -ForegroundColor Yellow
+            throw "Installer folder not found"
           }
 
-          $installer = "Installer/Output/ConvertidorDeOrdenes-Setup.exe"
-          if (-not (Test-Path $installer)) {
-            Write-Host "Installer file not found at: $installer" -ForegroundColor Red
-            Write-Host "Listing Installer folder recursively for diagnostics..." -ForegroundColor Cyan
+          Write-Host "Searching for installer..." -ForegroundColor Cyan
+          $candidates = Get-ChildItem -Path "Installer" -Recurse -File -Filter "ConvertidorDeOrdenes-Setup.exe" -ErrorAction SilentlyContinue
+          if (-not $candidates -or $candidates.Count -eq 0) {
+            Write-Host "Installer not found. Diagnostics listing Installer recursively..." -ForegroundColor Yellow
             Get-ChildItem -Path "Installer" -Recurse -Force | Select-Object FullName,Length | Out-String | Write-Host
-            throw "Expected installer not found: $installer"
+            throw "Expected installer not found under Installer/**/ConvertidorDeOrdenes-Setup.exe"
           }
+
+          Write-Host "Found installer candidate(s):" -ForegroundColor Green
+          $candidates | Select-Object FullName,Length | Format-Table -AutoSize | Out-String | Write-Host
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -56,4 +59,4 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
-            Installer/Output/ConvertidorDeOrdenes-Setup.exe
+            Installer/**/ConvertidorDeOrdenes-Setup.exe
