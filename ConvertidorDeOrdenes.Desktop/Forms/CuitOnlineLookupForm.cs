@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using ConvertidorDeOrdenes.Core.Services;
 using ConvertidorDeOrdenes.Desktop.Services;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
@@ -44,21 +45,29 @@ public sealed class CuitOnlineLookupForm : Form
         MinimumSize = new Size(900, 600);
         StartPosition = FormStartPosition.CenterParent;
 
+        // Panel superior que contiene el texto de ayuda y el botón "Extraer CUIT".
+        var headerPanel = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 80,
+            BackColor = SystemColors.Control
+        };
+
         _lblInfo.Text =
             "1) Inicie sesión en el portal (usuario/contraseña no se guardan)." + Environment.NewLine +
             "2) Vaya a 'Consulta de Operativos' / bandeja / tray." + Environment.NewLine +
             $"3) Busque el N° de Contrato {_contractNumber} usando el buscador del portal." + Environment.NewLine +
             "4) Cuando vea el operativo en la lista, pulse 'Extraer CUIT' para copiarlo en esta orden.";
         _lblInfo.AutoSize = false;
-        _lblInfo.Location = new Point(10, 5);
-        _lblInfo.Size = new Size(1060, 70);
+        _lblInfo.Dock = DockStyle.Fill;
+        _lblInfo.Padding = new Padding(10, 5, 10, 5);
         _lblInfo.Font = new Font("Segoe UI", 9);
         _lblInfo.ForeColor = Color.FromArgb(50, 50, 50);
 
         _btnExtraerCuit.Text = "Extraer CUIT";
         _btnExtraerCuit.Size = new Size(140, 32);
-        _btnExtraerCuit.Location = new Point(930, 45);
-        _btnExtraerCuit.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        _btnExtraerCuit.Dock = DockStyle.Right;
+        _btnExtraerCuit.Margin = new Padding(0, 20, 20, 20);
         _btnExtraerCuit.Font = new Font("Segoe UI", 9, FontStyle.Bold);
         _btnExtraerCuit.BackColor = Color.FromArgb(60, 140, 60);
         _btnExtraerCuit.ForeColor = Color.White;
@@ -67,13 +76,13 @@ public sealed class CuitOnlineLookupForm : Form
         _btnExtraerCuit.Cursor = Cursors.Hand;
         _btnExtraerCuit.Click += BtnExtraerCuit_Click;
 
-        _webView.Location = new Point(0, 80);
-        _webView.Size = new Size(ClientSize.Width, ClientSize.Height - 80);
-        _webView.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+        _webView.Dock = DockStyle.Fill;
+
+        headerPanel.Controls.Add(_lblInfo);
+        headerPanel.Controls.Add(_btnExtraerCuit);
 
         Controls.Add(_webView);
-        Controls.Add(_lblInfo);
-        Controls.Add(_btnExtraerCuit);
+        Controls.Add(headerPanel);
 
         try
         {
@@ -255,17 +264,21 @@ public sealed class CuitOnlineLookupForm : Form
 
             // Normalizar a solo dígitos
             cuit = new string(cuit.Where(char.IsDigit).ToArray());
-            if (cuit.Length != 11)
+            string resultCuit = cuit;
+
+            if (cuit.Length == 11)
             {
-                if (manual)
-                {
-                    var msg = "Se encontró un valor con formato inesperado como CUIT: '" + cuit + "'." +
-                              "\nDe todas formas se copiará tal cual para que pueda revisarlo.";
-                    MessageBox.Show(msg, "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
+                // Forzar formato estándar xx-xxxxxxxx-x
+                resultCuit = CuitUtils.FormatOrKeep(cuit);
+            }
+            else if (manual)
+            {
+                var msg = "Se encontró un valor con formato inesperado como CUIT: '" + cuit + "'." +
+                          "\nDe todas formas se copiará tal cual para que pueda revisarlo.";
+                MessageBox.Show(msg, "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
 
-            FoundCuit = cuit;
+            FoundCuit = resultCuit;
             DialogResult = DialogResult.OK;
             Close();
         }

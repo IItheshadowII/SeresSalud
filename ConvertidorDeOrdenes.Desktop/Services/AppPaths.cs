@@ -26,6 +26,8 @@ public static class AppPaths
     public static string UpdateStatePath => Path.Combine(DataRootDirectory, "update_state.json");
     public static string UpdateTokenPath => Path.Combine(DataRootDirectory, "github_token.dat");
 
+    public static string CompanyResolutionDecisionsPath => Path.Combine(DataRootDirectory, "company_resolution_decisions.json");
+
     public static Version GetCurrentVersion()
     {
         // Preferir AssemblyInformationalVersion si existe

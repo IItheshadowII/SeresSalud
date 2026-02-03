@@ -32,8 +32,9 @@ public class Normalizer
         // Normalizar empleador y número de establecimiento
         NormalizeEmpleador(row);
 
-        // Extraer código postal desde localidad si viene como "(6034) LOCALIDAD-B A"
-        ExtractCodPostalFromLocalidad(row);
+        // La columna E-CodPostal debe quedar siempre vacía.
+        // Si la localidad viene con prefijo "(6034)", se limpia en NormalizeLocalidad.
+        row.CodPostal = string.Empty;
 
         // Normalizar localidad
         row.Localidad = NormalizeLocalidad(row.Localidad);
@@ -92,26 +93,6 @@ public class Normalizer
         }
 
         return normalized;
-    }
-
-    /// <summary>
-    /// Si la localidad viene con formato "(6034) JUAN BAUTISTA ALBERDI-B A",
-    /// extrae el código postal al campo CodPostal y deja solo la localidad.
-    /// </summary>
-    private void ExtractCodPostalFromLocalidad(OutputRow row)
-    {
-        if (!string.IsNullOrWhiteSpace(row.CodPostal))
-            return;
-
-        if (string.IsNullOrWhiteSpace(row.Localidad))
-            return;
-
-        var match = Regex.Match(row.Localidad, "^\\((\\d{3,5})\\)\\s*(.+)$");
-        if (!match.Success)
-            return;
-
-        row.CodPostal = match.Groups[1].Value.Trim();
-        row.Localidad = match.Groups[2].Value.Trim();
     }
 
     /// <summary>

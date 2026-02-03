@@ -37,8 +37,11 @@ public partial class MainForm : Form
     private DataGridView dgvPreview = null!;
     private Label lblEstadisticas = null!;
     private Button btnExportar = null!;
+    private Button btnCorregirErrores = null!;
     private Button btnNuevo = null!;
     private TextBox txtLog = null!;
+
+    private IList<OutputRow>? _virtualRows;
 
     public MainForm(WizardForm.TipoCarga tipoCarga, string frecuencia, string referente, string art)
     {
@@ -289,6 +292,25 @@ public partial class MainForm : Form
         var tooltipExportar = new ToolTip();
         tooltipExportar.SetToolTip(btnExportar, "Exportar los datos procesados a formato XLS (Excel 97-2003)");
 
+        btnCorregirErrores = new Button
+        {
+            Text = "✏️ Corregir errores...",
+            Location = new Point(710, 660),
+            Size = new Size(175, 40),
+            Enabled = false,
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            BackColor = Color.FromArgb(255, 215, 115),
+            ForeColor = Color.FromArgb(80, 60, 0),
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand,
+            Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+        };
+        btnCorregirErrores.FlatAppearance.BorderSize = 0;
+        btnCorregirErrores.Click += BtnCorregirErrores_Click;
+
+        var tooltipCorregir = new ToolTip();
+        tooltipCorregir.SetToolTip(btnCorregirErrores, "Editar filas con error y revalidar sin re-analizar el archivo");
+
         btnNuevo = new Button
         {
             Text = "🔄 Nueva Conversión",
@@ -319,6 +341,7 @@ public partial class MainForm : Form
         this.Controls.Add(lblLog);
         this.Controls.Add(txtLog);
         this.Controls.Add(btnExportar);
+        this.Controls.Add(btnCorregirErrores);
         this.Controls.Add(btnNuevo);
 
         ConfigureDataGridView();
@@ -326,6 +349,10 @@ public partial class MainForm : Form
 
     private void ConfigureDataGridView()
     {
+        dgvPreview.VirtualMode = true;
+        dgvPreview.CellValueNeeded += DgvPreview_CellValueNeeded;
+        dgvPreview.CellFormatting += DgvPreview_CellFormatting;
+
         // Configurar columnas A-X
         var columns = new[]
         {
@@ -340,6 +367,73 @@ public partial class MainForm : Form
         {
             dgvPreview.Columns.Add(col, col);
             dgvPreview.Columns[dgvPreview.Columns.Count - 1].Width = 100;
+        }
+
+        dgvPreview.RowCount = 0;
+    }
+
+    private void DgvPreview_CellValueNeeded(object? sender, DataGridViewCellValueEventArgs e)
+    {
+        var virtualRows = _virtualRows;
+        if (virtualRows == null)
+            return;
+
+        if (e.RowIndex < 0 || e.RowIndex >= virtualRows.Count)
+            return;
+
+        var row = virtualRows[e.RowIndex];
+
+        e.Value = e.ColumnIndex switch
+        {
+            0 => row.CuitEmpleador,
+            1 => row.CIIU,
+            2 => row.Empleador,
+            3 => row.Calle,
+            4 => row.CodPostal,
+            5 => row.Localidad,
+            6 => row.Provincia,
+            7 => row.ABMlocProv,
+            8 => row.Telefono,
+            9 => row.Fax,
+            10 => row.Contrato,
+            11 => row.NroEstablecimiento,
+            12 => row.Frecuencia,
+            13 => row.Cuil,
+            14 => row.NroDocumento,
+            15 => row.TrabajadorApellidoNombre,
+            16 => row.Riesgo,
+            17 => row.DescripcionRiesgo,
+            18 => row.ABMRiesgo,
+            19 => row.Prestacion,
+            20 => row.HistoriaClinica,
+            21 => row.Mail,
+            22 => row.Referente,
+            23 => row.DescripcionError,
+            24 => row.Id,
+            _ => null
+        };
+    }
+
+    private void DgvPreview_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+    {
+        var virtualRows = _virtualRows;
+        if (virtualRows == null)
+            return;
+
+        if (e.RowIndex < 0 || e.RowIndex >= virtualRows.Count)
+            return;
+
+        var row = virtualRows[e.RowIndex];
+        if (!string.IsNullOrWhiteSpace(row.DescripcionError))
+        {
+            if (e.CellStyle != null)
+            {
+                e.CellStyle.BackColor = Color.LightCoral;
+            }
+            else
+            {
+                e.CellStyle = new DataGridViewCellStyle { BackColor = Color.LightCoral };
+            }
         }
     }
 
@@ -508,6 +602,9 @@ public partial class MainForm : Form
         if (string.IsNullOrWhiteSpace(txtArchivo.Text))
             return;
 
+        btnAnalizar.Enabled = false;
+        UseWaitCursor = true;
+
         try
         {
             await EnsureInitializedAsync();
@@ -515,16 +612,47 @@ public partial class MainForm : Form
             LogMessage("Iniciando análisis...");
             _logger?.LogInfo($"Analizando archivo: {txtArchivo.Text}");
 
-            // Parsear archivo
-            if (_tipoCarga == WizardForm.TipoCarga.ReconfirmatoriosReevaluaciones)
+            using (var progress = new ProgressDialog("Analizando", "Leyendo y parseando archivo..."))
             {
-                var parser = new CsvOrderParser();
-                _parseResult = parser.Parse(txtArchivo.Text, _frecuencia, _referente);
+                progress.SetIndeterminate(true);
+                progress.Show(this);
+                await Task.Yield();
+
+                // Parsear archivo (en background para no congelar la UI)
+                _parseResult = await Task.Run(() =>
+                {
+                    if (_tipoCarga == WizardForm.TipoCarga.ReconfirmatoriosReevaluaciones)
+                    {
+                        var parser = new CsvOrderParser();
+                        return parser.Parse(txtArchivo.Text, _frecuencia, _referente);
+                    }
+
+                    var parserXlsx = new XlsxOrderParser();
+                    return parserXlsx.Parse(txtArchivo.Text, _frecuencia, _referente);
+                });
+
+                progress.SetIndeterminate(false);
+                if (_parseResult != null)
+                {
+                    progress.SetStatus($"Resolviendo empresas (Empresas.xlsx)... 0 / {_parseResult.TotalRows} filas");
+                }
+
+                var resolveProgress = new Progress<(int processed, int total)>(info =>
+                {
+                    var (processed, total) = info;
+                    var percent = total > 0 ? (int)Math.Round(processed * 100.0 / total) : 0;
+                    progress.SetProgress(percent);
+                    progress.SetStatus($"Resolviendo empresas (Empresas.xlsx)... {processed} / {total} filas");
+                });
+
+                await Task.Run(() => AutoResolveCompanies(resolveProgress));
             }
-            else
+
+            if (_parseResult == null)
             {
-                var parser = new XlsxOrderParser();
-                _parseResult = parser.Parse(txtArchivo.Text, _frecuencia, _referente);
+                MessageBox.Show("No se pudo parsear el archivo de entrada.", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
             }
 
             LogMessage($"Parseado: {_parseResult.TotalRows} filas");
@@ -538,7 +666,7 @@ public partial class MainForm : Form
             }
 
             // Completar datos de empresa automáticamente usando la base, sin mostrar diálogos
-            AutoResolveCompanies();
+            // (ya realizado en background con barra de progreso)
 
             // Abrir ventana de revisión/edición de datos cargados
             if (_companyRepository != null)
@@ -548,7 +676,29 @@ public partial class MainForm : Form
             }
 
             // Normalizar y validar luego de que el usuario complete datos
-            NormalizeAndValidate(out var warnings, out var errors);
+            List<string> warnings;
+            List<string> errors;
+            using (var progress2 = new ProgressDialog("Validando", "Normalizando y validando filas..."))
+            {
+                progress2.SetIndeterminate(false);
+                progress2.Show(this);
+                await Task.Yield();
+
+                if (_parseResult != null)
+                {
+                    progress2.SetStatus($"Normalizando y validando filas... 0 / {_parseResult.TotalRows} filas");
+                }
+
+                var validateProgress = new Progress<(int processed, int total)>(info =>
+                {
+                    var (processed, total) = info;
+                    var percent = total > 0 ? (int)Math.Round(processed * 100.0 / total) : 0;
+                    progress2.SetProgress(percent);
+                    progress2.SetStatus($"Normalizando y validando filas... {processed} / {total} filas");
+                });
+
+                (warnings, errors) = await Task.Run(() => NormalizeAndValidate(validateProgress));
+            }
 
             // Mostrar en grid final
             LoadDataIntoGrid();
@@ -556,6 +706,7 @@ public partial class MainForm : Form
             // Actualizar estadísticas y habilitar exportación
             UpdateStatistics(warnings, errors);
             btnExportar.Enabled = errors.Count == 0;
+            btnCorregirErrores.Enabled = errors.Count > 0;
             
             LogMessage("Análisis completado.");
         }
@@ -566,18 +717,26 @@ public partial class MainForm : Form
             MessageBox.Show($"Error analizando archivo: {ex.Message}", "Error",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+        finally
+        {
+            UseWaitCursor = false;
+            btnAnalizar.Enabled = true;
+        }
     }
 
-    private void AutoResolveCompanies()
+    private void AutoResolveCompanies(IProgress<(int processed, int total)>? progress = null)
     {
         if (_parseResult == null || _companyRepository == null)
             return;
 
-        foreach (var row in _parseResult.Rows)
+        var total = _parseResult.Rows.Count;
+        for (int i = 0; i < total; i++)
         {
-            // Extraer CP desde localidad si viene como "(6034) LOCALIDAD-B A" para que
-            // el modal de revisión muestre ya el Código Postal.
-            ExtractCodPostalFromLocalidad(row);
+            var row = _parseResult.Rows[i];
+            // La columna E-CodPostal debe quedar siempre vacía.
+            // Si la localidad viene como "(6034) LOCALIDAD-B A", solo limpiamos la localidad.
+            StripCodPostalFromLocalidad(row);
+            row.CodPostal = string.Empty;
 
             if (!string.IsNullOrWhiteSpace(row.CuitEmpleador))
             {
@@ -591,8 +750,6 @@ public partial class MainForm : Form
                     row.CIIU = company.CIIU;
                     row.Empleador = company.Empleador;
                     row.Calle = company.Calle;
-                    if (!string.IsNullOrWhiteSpace(company.CodPostal))
-                        row.CodPostal = company.CodPostal;
                     if (!string.IsNullOrWhiteSpace(company.Localidad))
                         row.Localidad = company.Localidad;
                     if (!string.IsNullOrWhiteSpace(company.Provincia))
@@ -618,8 +775,6 @@ public partial class MainForm : Form
                     row.CIIU = company.CIIU;
                     row.Empleador = company.Empleador;
                     row.Calle = company.Calle;
-                    if (!string.IsNullOrWhiteSpace(company.CodPostal))
-                        row.CodPostal = company.CodPostal;
                     if (!string.IsNullOrWhiteSpace(company.Localidad))
                         row.Localidad = company.Localidad;
                     if (!string.IsNullOrWhiteSpace(company.Provincia))
@@ -631,6 +786,11 @@ public partial class MainForm : Form
                     if (!string.IsNullOrWhiteSpace(company.Mail))
                         row.Mail = company.Mail;
                 }
+            }
+
+            if (progress != null && total > 0 && (i % 250 == 0 || i == total - 1))
+            {
+                progress.Report((i + 1, total));
             }
         }
     }
@@ -651,16 +811,33 @@ public partial class MainForm : Form
         row.Localidad = match.Groups[2].Value.Trim();
     }
 
-    private void NormalizeAndValidate(out List<string> warnings, out List<string> errors)
+    private static void StripCodPostalFromLocalidad(OutputRow row)
     {
-        warnings = new List<string>();
-        errors = new List<string>();
-
-        if (_parseResult == null)
+        if (string.IsNullOrWhiteSpace(row.Localidad))
             return;
 
-        foreach (var row in _parseResult.Rows)
+        var match = Regex.Match(row.Localidad, "^\\((\\d{3,5})\\)\\s*(.+)$");
+        if (!match.Success)
+            return;
+
+        // No guardamos el CP: solo limpiamos el texto de localidad.
+        row.Localidad = match.Groups[2].Value.Trim();
+    }
+
+    private (List<string> warnings, List<string> errors) NormalizeAndValidate(IProgress<(int processed, int total)>? progress = null)
+    {
+        var warnings = new List<string>();
+        var errors = new List<string>();
+
+        if (_parseResult == null)
+            return (warnings, errors);
+
+        var total = _parseResult.Rows.Count;
+        for (int i = 0; i < total; i++)
         {
+            var row = _parseResult.Rows[i];
+            // La columna E-CodPostal debe quedar siempre vacía.
+            row.CodPostal = string.Empty;
             _normalizer?.NormalizeRow(row, warnings);
             var validation = _validator?.Validate(row);
 
@@ -678,7 +855,14 @@ public partial class MainForm : Form
                     row.DescripcionError = string.Empty;
                 }
             }
+
+            if (progress != null && total > 0 && (i % 250 == 0 || i == total - 1))
+            {
+                progress.Report((i + 1, total));
+            }
         }
+
+        return (warnings, errors);
     }
 
     private void LoadDataIntoGrid()
@@ -686,25 +870,9 @@ public partial class MainForm : Form
         if (_parseResult == null)
             return;
 
-        dgvPreview.Rows.Clear();
-
-        foreach (var row in _parseResult.Rows)
-        {
-            dgvPreview.Rows.Add(
-                row.CuitEmpleador, row.CIIU, row.Empleador, row.Calle, string.Empty,
-                row.Localidad, row.Provincia, row.ABMlocProv, row.Telefono, row.Fax,
-                row.Contrato, row.NroEstablecimiento, row.Frecuencia, row.Cuil, row.NroDocumento,
-                row.TrabajadorApellidoNombre, row.Riesgo, row.DescripcionRiesgo, row.ABMRiesgo,
-                row.Prestacion, row.HistoriaClinica, row.Mail, row.Referente, row.DescripcionError,
-                row.Id
-            );
-
-            // Colorear filas con error
-            if (!string.IsNullOrWhiteSpace(row.DescripcionError))
-            {
-                dgvPreview.Rows[dgvPreview.Rows.Count - 1].DefaultCellStyle.BackColor = Color.LightCoral;
-            }
-        }
+        _virtualRows = _parseResult.Rows;
+        dgvPreview.RowCount = _virtualRows.Count;
+        dgvPreview.Refresh();
     }
 
     private void UpdateStatistics(List<string> warnings, List<string> errors)
@@ -733,6 +901,22 @@ public partial class MainForm : Form
         foreach (var warning in warnings)
         {
             _logger?.LogWarning(warning);
+        }
+
+        // Mostrar warnings en el log visible (limitado para no congelar la UI)
+        const int maxUiWarnings = 50;
+        if (warnings.Count > 0)
+        {
+            var toShow = warnings.Take(maxUiWarnings).ToList();
+            foreach (var w in toShow)
+            {
+                LogMessage("WARN: " + w);
+            }
+
+            if (warnings.Count > maxUiWarnings)
+            {
+                LogMessage($"WARN: ... y {warnings.Count - maxUiWarnings} warnings más (ver log en archivo)");
+            }
         }
 
         foreach (var error in errors)
@@ -777,6 +961,83 @@ public partial class MainForm : Form
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+    }
+
+    private async void BtnCorregirErrores_Click(object? sender, EventArgs e)
+    {
+        if (_parseResult == null || _parseResult.Rows.Count == 0)
+        {
+            MessageBox.Show("No hay datos analizados para corregir.", "Información",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        try
+        {
+            await EnsureInitializedAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error inicializando servicios: {ex.Message}", "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
+        if (_companyRepository == null)
+        {
+            MessageBox.Show("La base de empresas no está disponible todavía.", "Empresas",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        var rowsWithErrors = _parseResult.Rows
+            .Where(r => !string.IsNullOrWhiteSpace(r.DescripcionError))
+            .ToList();
+
+        if (rowsWithErrors.Count == 0)
+        {
+            MessageBox.Show("No hay errores para corregir.", "Información",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            btnCorregirErrores.Enabled = false;
+            return;
+        }
+
+        // Abrir la revisión solo con filas con error, sin re-parsear el archivo.
+        using (var resolutionForm = new CompanyResolutionForm(rowsWithErrors, _companyRepository))
+        {
+            resolutionForm.ShowDialog(this);
+        }
+
+        // Revalidar todo el dataset actual (mismo _parseResult.Rows) y refrescar la grilla.
+        btnCorregirErrores.Enabled = false;
+        btnExportar.Enabled = false;
+        UseWaitCursor = true;
+
+        List<string> warnings;
+        List<string> errors;
+        using (var progress = new ProgressDialog("Revalidando", "Normalizando y validando filas..."))
+        {
+            progress.SetIndeterminate(false);
+            progress.Show(this);
+            await Task.Yield();
+
+            progress.SetStatus($"Normalizando y validando filas... 0 / {_parseResult.TotalRows} filas");
+            var validateProgress = new Progress<(int processed, int total)>(info =>
+            {
+                var (processed, total) = info;
+                var percent = total > 0 ? (int)Math.Round(processed * 100.0 / total) : 0;
+                progress.SetProgress(percent);
+                progress.SetStatus($"Normalizando y validando filas... {processed} / {total} filas");
+            });
+
+            (warnings, errors) = await Task.Run(() => NormalizeAndValidate(validateProgress));
+        }
+
+        LoadDataIntoGrid();
+        UpdateStatistics(warnings, errors);
+        btnExportar.Enabled = errors.Count == 0;
+        btnCorregirErrores.Enabled = errors.Count > 0;
+        UseWaitCursor = false;
     }
 
     private void BtnNuevo_Click(object? sender, EventArgs e)

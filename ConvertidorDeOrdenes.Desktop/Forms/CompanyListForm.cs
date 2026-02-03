@@ -11,19 +11,26 @@ namespace ConvertidorDeOrdenes.Desktop.Forms;
 public sealed class CompanyListForm : Form
 {
     private readonly CompanyRepositoryExcel _repository;
+    private readonly CompanyResolutionService _resolutionService;
     private List<CompanyRecord> _allCompanies = new();
     private BindingList<CompanyRecord> _binding = null!;
 
     private TextBox _txtBuscar = null!;
+    private TextBox _filterCuit = null!;
+    private TextBox _filterEmpleador = null!;
+    private TextBox _filterLocalidad = null!;
+    private TextBox _filterProvincia = null!;
     private DataGridView _dgv = null!;
     private Button _btnAgregar = null!;
     private Button _btnEditar = null!;
     private Button _btnEliminar = null!;
+    private Button _btnVerificarDuplicados = null!;
     private Button _btnCerrar = null!;
 
     public CompanyListForm(CompanyRepositoryExcel repository)
     {
         _repository = repository;
+        _resolutionService = new CompanyResolutionService(repository);
         InitializeComponent();
         LoadCompanies();
     }
@@ -66,10 +73,50 @@ public sealed class CompanyListForm : Form
         };
         _txtBuscar.TextChanged += (_, _) => ApplyFilter();
 
+        // Filtros por columna
+        int filterTop = 105;
+        int filterWidth = 160;
+
+        _filterCuit = new TextBox
+        {
+            Location = new Point(25, filterTop),
+            Size = new Size(filterWidth, 22),
+            Font = new Font("Segoe UI", 8),
+            PlaceholderText = "Filtrar CUIT..."
+        };
+        _filterCuit.TextChanged += (_, _) => ApplyFilter();
+
+        _filterEmpleador = new TextBox
+        {
+            Location = new Point(25 + filterWidth + 10, filterTop),
+            Size = new Size(260, 22),
+            Font = new Font("Segoe UI", 8),
+            PlaceholderText = "Filtrar Empleador..."
+        };
+        _filterEmpleador.TextChanged += (_, _) => ApplyFilter();
+
+        _filterLocalidad = new TextBox
+        {
+            Location = new Point(25 + filterWidth + 10 + 260 + 10, filterTop),
+            Size = new Size(170, 22),
+            Font = new Font("Segoe UI", 8),
+            PlaceholderText = "Filtrar Localidad..."
+        };
+        _filterLocalidad.TextChanged += (_, _) => ApplyFilter();
+
+        _filterProvincia = new TextBox
+        {
+            Location = new Point(25 + filterWidth + 10 + 260 + 10 + 170 + 10, filterTop),
+            Size = new Size(170, 22),
+            Font = new Font("Segoe UI", 8),
+            PlaceholderText = "Filtrar Provincia..."
+        };
+        _filterProvincia.TextChanged += (_, _) => ApplyFilter();
+
         _dgv = new DataGridView
         {
-            Location = new Point(25, 110),
-            Size = new Size(920, 365),
+            Location = new Point(25, 135),
+            Size = new Size(920, 340),
             AutoGenerateColumns = true,
             ReadOnly = true,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
@@ -139,6 +186,20 @@ public sealed class CompanyListForm : Form
         _btnEliminar.FlatAppearance.BorderSize = 0;
         _btnEliminar.Click += BtnEliminar_Click;
 
+        _btnVerificarDuplicados = new Button
+        {
+            Text = "Verificar duplicados",
+            Location = new Point(385, 15),
+            Size = new Size(150, 38),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            BackColor = Color.FromArgb(255, 215, 115),
+            ForeColor = Color.FromArgb(80, 60, 0),
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
+        };
+        _btnVerificarDuplicados.FlatAppearance.BorderSize = 0;
+        _btnVerificarDuplicados.Click += BtnVerificarDuplicados_Click;
+
         _btnCerrar = new Button
         {
             Text = "Cerrar",
@@ -157,10 +218,15 @@ public sealed class CompanyListForm : Form
         bottomPanel.Controls.Add(_btnAgregar);
         bottomPanel.Controls.Add(_btnEditar);
         bottomPanel.Controls.Add(_btnEliminar);
+        bottomPanel.Controls.Add(_btnVerificarDuplicados);
         bottomPanel.Controls.Add(_btnCerrar);
         Controls.Add(lblTitulo);
         Controls.Add(lblSubtitulo);
         Controls.Add(_txtBuscar);
+        Controls.Add(_filterCuit);
+        Controls.Add(_filterEmpleador);
+        Controls.Add(_filterLocalidad);
+        Controls.Add(_filterProvincia);
         Controls.Add(_dgv);
         Controls.Add(bottomPanel);
     }
@@ -185,7 +251,7 @@ public sealed class CompanyListForm : Form
         using var dlg = new CompanyEditDialog(newCompany, cuitRequired: true);
         if (dlg.ShowDialog(this) == DialogResult.OK)
         {
-            _repository.SaveCompany(dlg.Company);
+            _resolutionService.SaveWithResolution(this, dlg.Company);
             LoadCompanies();
         }
     }
@@ -219,7 +285,7 @@ public sealed class CompanyListForm : Form
         using var dlg = new CompanyEditDialog(clone, cuitRequired: !string.IsNullOrWhiteSpace(clone.CUIT));
         if (dlg.ShowDialog(this) == DialogResult.OK)
         {
-            _repository.SaveCompany(dlg.Company);
+            _resolutionService.SaveWithResolution(this, dlg.Company);
             LoadCompanies();
         }
     }
@@ -255,9 +321,21 @@ public sealed class CompanyListForm : Form
         }
     }
 
+    private void BtnVerificarDuplicados_Click(object? sender, EventArgs e)
+    {
+        using var dlg = new CompanyDuplicatesForm(_repository);
+        dlg.ShowDialog(this);
+        // Al cerrar, recargamos la grilla principal por si se eliminaron registros.
+        LoadCompanies();
+    }
+
     private void ApplyFilter()
     {
         var term = (_txtBuscar.Text ?? string.Empty).Trim().ToUpperInvariant();
+        var cuitTerm = (_filterCuit.Text ?? string.Empty).Trim().ToUpperInvariant();
+        var empTerm = (_filterEmpleador.Text ?? string.Empty).Trim().ToUpperInvariant();
+        var locTerm = (_filterLocalidad.Text ?? string.Empty).Trim().ToUpperInvariant();
+        var provTerm = (_filterProvincia.Text ?? string.Empty).Trim().ToUpperInvariant();
 
         List<CompanyRecord> filtered;
 
@@ -275,6 +353,28 @@ public sealed class CompanyListForm : Form
                 })
                 .ToList();
         }
+
+        // Filtros de columna (se aplican además de la búsqueda general)
+        filtered = filtered
+            .Where(c =>
+            {
+                bool ok = true;
+
+                if (!string.IsNullOrWhiteSpace(cuitTerm))
+                    ok &= (c.CUIT ?? string.Empty).ToUpperInvariant().Contains(cuitTerm);
+
+                if (!string.IsNullOrWhiteSpace(empTerm))
+                    ok &= (c.Empleador ?? string.Empty).ToUpperInvariant().Contains(empTerm);
+
+                if (!string.IsNullOrWhiteSpace(locTerm))
+                    ok &= (c.Localidad ?? string.Empty).ToUpperInvariant().Contains(locTerm);
+
+                if (!string.IsNullOrWhiteSpace(provTerm))
+                    ok &= (c.Provincia ?? string.Empty).ToUpperInvariant().Contains(provTerm);
+
+                return ok;
+            })
+            .ToList();
 
         _binding = new BindingList<CompanyRecord>(filtered);
         _dgv.DataSource = _binding;

@@ -204,8 +204,18 @@ public partial class CompanyEditDialog : Form
             return;
         }
 
+        var formattedCuit = CuitUtils.FormatOrKeep(txtCUIT.Text);
+        var cuitDigits = CuitUtils.ExtractDigits(formattedCuit);
+
+        if (_cuitRequired && cuitDigits.Length != 11)
+        {
+            MessageBox.Show("El CUIT debe contener exactamente 11 dígitos (formato XX-XXXXXXXX-X).", "Validación",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
         // Guardar datos
-        Company.CUIT = txtCUIT.Text.Trim();
+        Company.CUIT = formattedCuit;
         Company.CIIU = txtCIIU.Text.Trim();
         Company.Empleador = txtEmpleador.Text.Trim();
         Company.Calle = txtCalle.Text.Trim();

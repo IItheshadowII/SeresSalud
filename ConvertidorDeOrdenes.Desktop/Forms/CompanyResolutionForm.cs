@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Text.RegularExpressions;
 using ConvertidorDeOrdenes.Core.Models;
 using ConvertidorDeOrdenes.Core.Services;
 using ConvertidorDeOrdenes.Desktop.Services;
@@ -10,17 +11,20 @@ public class CompanyResolutionForm : Form
 {
     private readonly BindingList<OutputRow> _rows;
     private readonly CompanyRepositoryExcel _companyRepository;
+    private readonly CompanyResolutionService _resolutionService;
 
     private DataGridView _dgvEmpresas = null!;
     private Button _btnBuscarBase = null!;
     private Button _btnBuscarCuitOnline = null!;
     private Button _btnEditarEmpresa = null!;
+    private Button _btnRefrescar = null!;
     private Button _btnCerrar = null!;
 
     public CompanyResolutionForm(IList<OutputRow> rows, CompanyRepositoryExcel companyRepository)
     {
         _rows = new BindingList<OutputRow>(rows);
         _companyRepository = companyRepository;
+        _resolutionService = new CompanyResolutionService(companyRepository);
 
         InitializeComponent();
     }
@@ -121,7 +125,8 @@ public class CompanyResolutionForm : Form
         {
             HeaderText = "Código Postal",
             DataPropertyName = nameof(OutputRow.CodPostal),
-            Width = 90
+            Width = 90,
+            ReadOnly = true
         });
 
         _dgvEmpresas.Columns.Add(new DataGridViewTextBoxColumn
@@ -313,6 +318,20 @@ public class CompanyResolutionForm : Form
         _btnEditarEmpresa.FlatAppearance.BorderSize = 0;
         _btnEditarEmpresa.Click += BtnEditarEmpresa_Click;
 
+        _btnRefrescar = new Button
+        {
+            Text = "Refrescar datos",
+            Location = new Point(615, 20),
+            Size = new Size(180, 40),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            BackColor = Color.FromArgb(255, 215, 115),
+            ForeColor = Color.FromArgb(80, 60, 0),
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
+        };
+        _btnRefrescar.FlatAppearance.BorderSize = 0;
+        _btnRefrescar.Click += BtnRefrescar_Click;
+
         _btnCerrar = new Button
         {
             Text = "Aceptar",
@@ -331,6 +350,7 @@ public class CompanyResolutionForm : Form
         bottomPanel.Controls.Add(_btnBuscarBase);
         bottomPanel.Controls.Add(_btnBuscarCuitOnline);
         bottomPanel.Controls.Add(_btnEditarEmpresa);
+        bottomPanel.Controls.Add(_btnRefrescar);
         bottomPanel.Controls.Add(_btnCerrar);
 
         AcceptButton = _btnCerrar;
@@ -379,7 +399,9 @@ public class CompanyResolutionForm : Form
 
         if (companies.Count == 1)
         {
-            ApplyCompanyData(row, companies[0]);
+            var company = companies[0];
+            ApplyCompanyData(row, company);
+            ApplyCompanyToSimilarRows(row, company);
             _dgvEmpresas.Refresh();
             return;
         }
@@ -387,7 +409,9 @@ public class CompanyResolutionForm : Form
         using var selectDialog = new CompanySelectDialog(companies, _companyRepository);
         if (selectDialog.ShowDialog(this) == DialogResult.OK && selectDialog.SelectedCompany != null)
         {
-            ApplyCompanyData(row, selectDialog.SelectedCompany);
+            var selectedCompany = selectDialog.SelectedCompany;
+            ApplyCompanyData(row, selectedCompany);
+            ApplyCompanyToSimilarRows(row, selectedCompany);
             _dgvEmpresas.Refresh();
         }
     }
@@ -422,9 +446,34 @@ public class CompanyResolutionForm : Form
         if (editDialog.ShowDialog(this) == DialogResult.OK)
         {
             ApplyCompanyData(row, editDialog.Company);
-            _companyRepository.SaveCompany(editDialog.Company);
+            _resolutionService.SaveWithResolution(this, editDialog.Company);
             _dgvEmpresas.Refresh();
         }
+    }
+
+    private async void BtnRefrescar_Click(object? sender, EventArgs e)
+    {
+        if (_rows.Count == 0)
+            return;
+
+        using var progress = new ProgressDialog("Actualizando", "Reaplicando datos de Empresas.xlsx...");
+        progress.SetIndeterminate(false);
+        progress.Show(this);
+        await Task.Yield();
+
+        progress.SetStatus($"Reaplicando datos de Empresas.xlsx... 0 / {_rows.Count} filas");
+
+        var resolveProgress = new Progress<(int processed, int total)>(info =>
+        {
+            var (processed, total) = info;
+            var percent = total > 0 ? (int)Math.Round(processed * 100.0 / total) : 0;
+            progress.SetProgress(percent);
+            progress.SetStatus($"Reaplicando datos de Empresas.xlsx... {processed} / {total} filas");
+        });
+
+        await Task.Run(() => AutoResolveCompaniesOnRows(resolveProgress));
+
+        _dgvEmpresas.Refresh();
     }
 
     private void BtnBuscarCuitOnline_Click(object? sender, EventArgs e)
@@ -449,9 +498,199 @@ public class CompanyResolutionForm : Form
         using var dlg = new CuitOnlineLookupForm(row.Contrato);
         if (dlg.ShowDialog(this) == DialogResult.OK && !string.IsNullOrWhiteSpace(dlg.FoundCuit))
         {
-            row.CuitEmpleador = dlg.FoundCuit;
+            var foundCuit = dlg.FoundCuit!;
+            row.CuitEmpleador = foundCuit;
+
+            // Si el CUIT extraído ya existe en Empresas.xlsx, usamos esa empresa como
+            // fuente de verdad y la aplicamos al resto de filas similares.
+            var companies = _companyRepository.SearchByCuit(foundCuit);
+            if (companies.Count == 1)
+            {
+                var company = companies[0];
+                ApplyCompanyData(row, company);
+                ApplyCompanyToSimilarRows(row, company);
+            }
+            else
+            {
+                // Si todavía no está en Empresas.xlsx, al menos propagamos el CUIT
+                // al resto de filas con el mismo empleador / CUIT vacío.
+                ApplyCuitToSimilarRows(row, foundCuit);
+            }
+
             _dgvEmpresas.Refresh();
         }
+    }
+
+    private void AutoResolveCompaniesOnRows(IProgress<(int processed, int total)>? progress = null)
+    {
+        var total = _rows.Count;
+        for (int i = 0; i < total; i++)
+        {
+            var row = _rows[i];
+            // La columna E-CodPostal debe quedar siempre vacía.
+            StripCodPostalFromLocalidad(row);
+            row.CodPostal = string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(row.CuitEmpleador))
+            {
+                var companies = _companyRepository.SearchByCuit(row.CuitEmpleador);
+
+                if (companies.Count == 1)
+                {
+                    var company = companies[0];
+                    row.CuitEmpleador = company.CUIT;
+                    row.CIIU = company.CIIU;
+                    row.Empleador = company.Empleador;
+                    row.Calle = company.Calle;
+                    if (!string.IsNullOrWhiteSpace(company.Localidad))
+                        row.Localidad = company.Localidad;
+                    if (!string.IsNullOrWhiteSpace(company.Provincia))
+                        row.Provincia = company.Provincia;
+                    if (!string.IsNullOrWhiteSpace(company.Telefono))
+                        row.Telefono = company.Telefono;
+                    if (!string.IsNullOrWhiteSpace(company.Fax))
+                        row.Fax = company.Fax;
+                    if (!string.IsNullOrWhiteSpace(company.Mail))
+                        row.Mail = company.Mail;
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(row.Empleador))
+            {
+                var companies = _companyRepository.SearchByName(row.Empleador);
+
+                if (companies.Count == 1)
+                {
+                    var company = companies[0];
+                    row.CuitEmpleador = company.CUIT;
+                    row.CIIU = company.CIIU;
+                    row.Empleador = company.Empleador;
+                    row.Calle = company.Calle;
+                    if (!string.IsNullOrWhiteSpace(company.Localidad))
+                        row.Localidad = company.Localidad;
+                    if (!string.IsNullOrWhiteSpace(company.Provincia))
+                        row.Provincia = company.Provincia;
+                    if (!string.IsNullOrWhiteSpace(company.Telefono))
+                        row.Telefono = company.Telefono;
+                    if (!string.IsNullOrWhiteSpace(company.Fax))
+                        row.Fax = company.Fax;
+                    if (!string.IsNullOrWhiteSpace(company.Mail))
+                        row.Mail = company.Mail;
+                }
+            }
+
+            if (progress != null && total > 0 && (i % 250 == 0 || i == total - 1))
+            {
+                progress.Report((i + 1, total));
+            }
+        }
+    }
+
+    private static string GetCuitDigits(string? cuit)
+    {
+        if (string.IsNullOrWhiteSpace(cuit))
+            return string.Empty;
+
+        return new string(cuit.Where(char.IsDigit).ToArray());
+    }
+
+    private static string NormalizeName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        return value.Trim().ToUpperInvariant();
+    }
+
+    /// <summary>
+    /// Aplica la empresa elegida también al resto de filas similares del archivo actual
+    /// (mismo CUIT; o mismo empleador cuando la fila no tiene CUIT).
+    /// </summary>
+    private void ApplyCompanyToSimilarRows(OutputRow sourceRow, CompanyRecord company)
+    {
+        var companyCuitDigits = GetCuitDigits(company.CUIT);
+        var companyNameKey = NormalizeName(company.Empleador);
+
+        if (string.IsNullOrEmpty(companyCuitDigits) && string.IsNullOrEmpty(companyNameKey))
+            return;
+
+        foreach (var row in _rows)
+        {
+            if (ReferenceEquals(row, sourceRow))
+                continue;
+
+            var rowCuitDigits = GetCuitDigits(row.CuitEmpleador);
+
+            bool shouldApply = false;
+
+            // Si ya tiene CUIT y coincide exactamente, usamos esa empresa.
+            if (!string.IsNullOrEmpty(companyCuitDigits) && !string.IsNullOrEmpty(rowCuitDigits) &&
+                rowCuitDigits == companyCuitDigits)
+            {
+                shouldApply = true;
+            }
+            // Si la fila no tiene CUIT pero el nombre de empleador coincide, también aplicamos.
+            else if (string.IsNullOrEmpty(rowCuitDigits) && !string.IsNullOrEmpty(companyNameKey) &&
+                     NormalizeName(row.Empleador) == companyNameKey)
+            {
+                shouldApply = true;
+            }
+
+            if (!shouldApply)
+                continue;
+
+            ApplyCompanyData(row, company);
+        }
+    }
+
+    /// <summary>
+    /// Cuando solo tenemos el CUIT (por ejemplo, extraído online), lo propagamos a
+    /// filas similares: mismo CUIT o mismo empleador sin CUIT.
+    /// </summary>
+    private void ApplyCuitToSimilarRows(OutputRow sourceRow, string formattedCuit)
+    {
+        var cuitDigits = GetCuitDigits(formattedCuit);
+        if (string.IsNullOrEmpty(cuitDigits))
+            return;
+
+        var sourceNameKey = NormalizeName(sourceRow.Empleador);
+
+        foreach (var row in _rows)
+        {
+            if (ReferenceEquals(row, sourceRow))
+                continue;
+
+            var rowCuitDigits = GetCuitDigits(row.CuitEmpleador);
+            var rowNameKey = NormalizeName(row.Empleador);
+
+            bool shouldApply = false;
+
+            if (!string.IsNullOrEmpty(rowCuitDigits) && rowCuitDigits == cuitDigits)
+            {
+                shouldApply = true;
+            }
+            else if (string.IsNullOrEmpty(rowCuitDigits) && !string.IsNullOrEmpty(sourceNameKey) &&
+                     rowNameKey == sourceNameKey)
+            {
+                shouldApply = true;
+            }
+
+            if (!shouldApply)
+                continue;
+
+            row.CuitEmpleador = formattedCuit;
+        }
+    }
+
+    private static void StripCodPostalFromLocalidad(OutputRow row)
+    {
+        if (string.IsNullOrWhiteSpace(row.Localidad))
+            return;
+
+        var match = Regex.Match(row.Localidad, "^\\((\\d{3,5})\\)\\s*(.+)$");
+        if (!match.Success)
+            return;
+
+        row.Localidad = match.Groups[2].Value.Trim();
     }
 
     private static void ApplyCompanyData(OutputRow row, CompanyRecord company)
@@ -460,7 +699,8 @@ public class CompanyResolutionForm : Form
         row.CIIU = company.CIIU;
         row.Empleador = company.Empleador;
         row.Calle = company.Calle;
-        row.CodPostal = company.CodPostal;
+        // La columna E-CodPostal debe quedar siempre vacía.
+        row.CodPostal = string.Empty;
         row.Localidad = company.Localidad;
         row.Provincia = company.Provincia;
         row.Telefono = company.Telefono;

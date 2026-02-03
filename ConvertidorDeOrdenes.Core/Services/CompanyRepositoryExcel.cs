@@ -71,14 +71,48 @@ public class CompanyRepositoryExcel
     /// </summary>
     public void SaveCompany(CompanyRecord company)
     {
-        // Buscar si existe por CUIT exacto
-        var existing = _companies.FirstOrDefault(c =>
+        SaveCompany(company, forceNew: false);
+    }
+
+    /// <summary>
+    /// Agrega o actualiza una empresa.
+    /// Si <paramref name="forceNew"/> es true, siempre inserta un nuevo registro (no unifica por sede).
+    /// </summary>
+    public void SaveCompany(CompanyRecord company, bool forceNew)
+    {
+        if (company == null)
+            throw new ArgumentNullException(nameof(company));
+
+        // Forzar formato de CUIT al persistir
+        company.CUIT = CuitUtils.FormatOrKeep(company.CUIT);
+
+        CompanyRecord? existing = null;
+
+        // 1) Si viene RowIndex (edición), es la fuente de verdad.
+        if (!forceNew && company.RowIndex > 0)
         {
-            var cuitClean = new string(c.CUIT.Where(char.IsDigit).ToArray());
-            var companyCuit = new string(company.CUIT.Where(char.IsDigit).ToArray());
-            return cuitClean.Equals(companyCuit, StringComparison.OrdinalIgnoreCase) &&
-                   c.Localidad.Equals(company.Localidad, StringComparison.OrdinalIgnoreCase);
-        });
+            existing = _companies.FirstOrDefault(c => c.RowIndex == company.RowIndex);
+        }
+
+        // 2) Si no hay RowIndex o no existe, intentar unificar solo si coincide CUIT + sede.
+        if (!forceNew && existing == null)
+        {
+            var companyCuitDigits = CuitUtils.ExtractDigits(company.CUIT);
+            var companySedeKey = CompanySedeUtils.ComputeSedeKey(company);
+
+            if (!string.IsNullOrWhiteSpace(companyCuitDigits))
+            {
+                existing = _companies.FirstOrDefault(c =>
+                {
+                    var cuitDigits = CuitUtils.ExtractDigits(c.CUIT);
+                    if (!cuitDigits.Equals(companyCuitDigits, StringComparison.OrdinalIgnoreCase))
+                        return false;
+
+                    var sedeKey = CompanySedeUtils.ComputeSedeKey(c);
+                    return sedeKey.Equals(companySedeKey, StringComparison.OrdinalIgnoreCase);
+                });
+            }
+        }
 
         if (existing != null)
         {
@@ -92,6 +126,9 @@ public class CompanyRepositoryExcel
             existing.Telefono = company.Telefono;
             existing.Fax = company.Fax;
             existing.Mail = company.Mail;
+
+            // Asegurar CUIT formateado también en el registro existente
+            existing.CUIT = company.CUIT;
         }
         else
         {
