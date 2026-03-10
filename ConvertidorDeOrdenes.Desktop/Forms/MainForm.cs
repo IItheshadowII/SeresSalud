@@ -43,6 +43,8 @@ public partial class MainForm : Form
 
     private IList<OutputRow>? _virtualRows;
 
+    private bool IsSmgArt => string.Equals(_art, "SMG", StringComparison.OrdinalIgnoreCase);
+
     public MainForm(WizardForm.TipoCarga tipoCarga, string frecuencia, string referente, string art)
     {
         _tipoCarga = tipoCarga;
@@ -496,8 +498,12 @@ public partial class MainForm : Form
     private void BtnSeleccionar_Click(object? sender, EventArgs e)
     {
         using var dialog = new OpenFileDialog();
-        
-        if (_tipoCarga == WizardForm.TipoCarga.AnualesSemestrales)
+
+        if (IsSmgArt)
+        {
+            dialog.Filter = "Archivos Excel antiguos (*.xls)|*.xls|Todos los archivos (*.*)|*.*";
+        }
+        else if (_tipoCarga == WizardForm.TipoCarga.AnualesSemestrales)
         {
             dialog.Filter = "Archivos Excel (*.xlsx)|*.xlsx|Todos los archivos (*.*)|*.*";
         }
@@ -608,6 +614,12 @@ public partial class MainForm : Form
         try
         {
             await EnsureInitializedAsync();
+
+            if (IsSmgArt)
+            {
+                await RunSmgParseAsync();
+                return;
+            }
 
             LogMessage("Iniciando análisis...");
             _logger?.LogInfo($"Analizando archivo: {txtArchivo.Text}");
@@ -724,6 +736,65 @@ public partial class MainForm : Form
         }
     }
 
+    private async Task RunSmgParseAsync()
+    {
+        _virtualRows = null;
+        dgvPreview.RowCount = 0;
+        dgvPreview.Refresh();
+        btnExportar.Enabled = false;
+        btnCorregirErrores.Enabled = false;
+
+        LogMessage("Iniciando analisis SMG...");
+        _logger?.LogInfo($"Analizando archivo SMG: {txtArchivo.Text}");
+
+        using (var progress = new ProgressDialog("Analizando", "Leyendo archivo SMG..."))
+        {
+            progress.SetIndeterminate(true);
+            progress.Show(this);
+            await Task.Yield();
+
+            _parseResult = await Task.Run(() =>
+            {
+                var parser = new SmgXlsOrderParser();
+                return parser.Parse(txtArchivo.Text, _frecuencia);
+            });
+        }
+
+        if (_parseResult == null)
+        {
+            MessageBox.Show("No se pudo parsear el archivo SMG.", "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
+        if (_parseResult.Errors.Count > 0)
+        {
+            foreach (var error in _parseResult.Errors)
+            {
+                _logger?.LogError(error);
+                LogMessage("ERROR: " + error);
+            }
+
+            var sampleErrors = string.Join("\n", _parseResult.Errors.Take(5));
+            MessageBox.Show("Error leyendo archivo SMG:\n" + sampleErrors, "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
+        if (_parseResult.TotalRows == 0)
+        {
+            MessageBox.Show("El archivo no contiene filas validas para procesar.", "Informacion",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        LoadDataIntoGrid();
+        UpdateStatistics(_parseResult.Warnings, _parseResult.Errors);
+        btnExportar.Enabled = _parseResult.Errors.Count == 0;
+        btnCorregirErrores.Enabled = false;
+        LogMessage("Analisis SMG completado.");
+    }
+
     private void AutoResolveCompanies(IProgress<(int processed, int total)>? progress = null)
     {
         if (_parseResult == null || _companyRepository == null)
@@ -733,23 +804,28 @@ public partial class MainForm : Form
         for (int i = 0; i < total; i++)
         {
             var row = _parseResult.Rows[i];
-            // La columna E-CodPostal debe quedar siempre vacía.
-            // Si la localidad viene como "(6034) LOCALIDAD-B A", solo limpiamos la localidad.
+            ExtractCodPostalFromLocalidad(row);
+            if (string.IsNullOrWhiteSpace(row.ResolvedCompanyCodPostal) && !string.IsNullOrWhiteSpace(row.CodPostal))
+                row.ResolvedCompanyCodPostal = row.CodPostal;
+
+            // Si la localidad viene como "(6034) LOCALIDAD-B A", limpiamos la localidad
+            // pero preservamos el CP extraído desde la orden.
             StripCodPostalFromLocalidad(row);
-            row.CodPostal = string.Empty;
 
             if (!string.IsNullOrWhiteSpace(row.CuitEmpleador))
             {
                 var companies = _companyRepository.SearchByCuit(row.CuitEmpleador);
 
-                if (companies.Count == 1)
+                var company = ResolveCompanyByCuitAndSede(companies, row);
+                if (company != null)
                 {
-                    var company = companies[0];
                     // Cuando hay match único por CUIT, la DB es la fuente de verdad.
                     row.CuitEmpleador = company.CUIT;
                     row.CIIU = company.CIIU;
                     row.Empleador = company.Empleador;
                     row.Calle = company.Calle;
+                    if (!string.IsNullOrWhiteSpace(company.CodPostal))
+                        row.CodPostal = company.CodPostal;
                     if (!string.IsNullOrWhiteSpace(company.Localidad))
                         row.Localidad = company.Localidad;
                     if (!string.IsNullOrWhiteSpace(company.Provincia))
@@ -775,6 +851,8 @@ public partial class MainForm : Form
                     row.CIIU = company.CIIU;
                     row.Empleador = company.Empleador;
                     row.Calle = company.Calle;
+                    if (!string.IsNullOrWhiteSpace(company.CodPostal))
+                        row.CodPostal = company.CodPostal;
                     if (!string.IsNullOrWhiteSpace(company.Localidad))
                         row.Localidad = company.Localidad;
                     if (!string.IsNullOrWhiteSpace(company.Provincia))
@@ -793,6 +871,47 @@ public partial class MainForm : Form
                 progress.Report((i + 1, total));
             }
         }
+    }
+
+    private static CompanyRecord? ResolveCompanyByCuitAndSede(IReadOnlyList<CompanyRecord> companies, OutputRow row)
+    {
+        if (companies.Count == 1)
+            return companies[0];
+
+        if (companies.Count <= 1)
+            return null;
+
+        var byProvincia = companies
+            .Where(c => TextEquals(c.Provincia, row.Provincia))
+            .ToList();
+
+        if (byProvincia.Count == 1)
+            return byProvincia[0];
+
+        var provinceScope = byProvincia.Count > 1 ? byProvincia : companies;
+
+        var byLocalidad = provinceScope
+            .Where(c => TextEquals(c.Localidad, row.Localidad))
+            .ToList();
+
+        if (byLocalidad.Count == 1)
+            return byLocalidad[0];
+
+        var localidadScope = byLocalidad.Count > 1 ? byLocalidad : provinceScope;
+
+        var byCalle = localidadScope
+            .Where(c => TextEquals(c.Calle, row.Calle))
+            .ToList();
+
+        return byCalle.Count == 1 ? byCalle[0] : null;
+    }
+
+    private static bool TextEquals(string? left, string? right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+            return false;
+
+        return left.Trim().Equals(right.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
     private static void ExtractCodPostalFromLocalidad(OutputRow row)
@@ -817,11 +936,21 @@ public partial class MainForm : Form
             return;
 
         var match = Regex.Match(row.Localidad, "^\\((\\d{3,5})\\)\\s*(.+)$");
-        if (!match.Success)
-            return;
+        var localidad = match.Success ? match.Groups[2].Value.Trim() : row.Localidad;
 
-        // No guardamos el CP: solo limpiamos el texto de localidad.
-        row.Localidad = match.Groups[2].Value.Trim();
+        // No guardamos el CP y tampoco sufijos de provincia incrustados en localidad.
+        row.Localidad = NormalizeLocalidadForAnalysis(localidad);
+    }
+
+    private static string NormalizeLocalidadForAnalysis(string? localidad)
+    {
+        if (string.IsNullOrWhiteSpace(localidad))
+            return string.Empty;
+
+        var normalized = localidad.Trim();
+        normalized = Regex.Replace(normalized, @"^\(\d+\)\s*", string.Empty);
+        normalized = Regex.Replace(normalized, @"[-\s]+(B\s*A|BUENOS\s+AIRES)\s*$", string.Empty, RegexOptions.IgnoreCase);
+        return normalized.Trim();
     }
 
     private (List<string> warnings, List<string> errors) NormalizeAndValidate(IProgress<(int processed, int total)>? progress = null)
@@ -836,8 +965,6 @@ public partial class MainForm : Form
         for (int i = 0; i < total; i++)
         {
             var row = _parseResult.Rows[i];
-            // La columna E-CodPostal debe quedar siempre vacía.
-            row.CodPostal = string.Empty;
             _normalizer?.NormalizeRow(row, warnings);
             var validation = _validator?.Validate(row);
 

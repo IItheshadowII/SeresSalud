@@ -121,11 +121,13 @@ public class XlsxOrderParser
                     Contrato = empresaData.Contrato,
                     CuitEmpleador = empresaData.CUIT,
                     Empleador = empresaData.RazonSocial,
+                    Calle = empresaData.Calle,
                     NroEstablecimiento = empresaData.NroEstablecimiento,
                     CodPostal = empresaData.CodPostal,
                     Localidad = empresaData.Localidad,
                     Provincia = empresaData.Provincia,
-                    Telefono = empresaData.Telefono
+                    Telefono = empresaData.Telefono,
+                    Mail = empresaData.Mail
                 };
 
                 // Completar/overridar datos de empresa desde columnas si existen
@@ -139,13 +141,40 @@ public class XlsxOrderParser
                 if (!string.IsNullOrWhiteSpace(empleadorFila))
                     outputRow.Empleador = empleadorFila;
 
-                var localidadFila = GetCellValue(dataRow, columnMap, "Localidad");
+                var calleFila = GetCellValue(dataRow, columnMap,
+                    "Domicilio", "Calle", "Direccion", "Dirección", "Calle / Numero", "Calle / Número");
+                if (!string.IsNullOrWhiteSpace(calleFila))
+                    outputRow.Calle = calleFila;
+
+                var localidadFila = GetCellValue(dataRow, columnMap,
+                    "Localidad", "Ciudad", "Ciudad / Localidad", "Localidad / Domicilio");
                 if (!string.IsNullOrWhiteSpace(localidadFila))
                     outputRow.Localidad = localidadFila;
 
-                var provinciaFila = GetCellValue(dataRow, columnMap, "Provincia");
+                var codPostalFila = GetCellValue(dataRow, columnMap,
+                    "Codigo Postal", "Código Postal", "CP", "Cod Postal", "CodPostal");
+                if (!string.IsNullOrWhiteSpace(codPostalFila))
+                    outputRow.CodPostal = codPostalFila;
+
+                var provinciaFila = GetCellValue(dataRow, columnMap,
+                    "Provincia", "Prov", "Prov.", "Pcia", "Pcia.", "Provincia / Domicilio");
                 if (!string.IsNullOrWhiteSpace(provinciaFila))
                     outputRow.Provincia = provinciaFila;
+
+                var telefonoFila = GetCellValue(dataRow, columnMap,
+                    "Telefono", "Teléfono", "Telefono / Celular", "Teléfono / Celular", "Celular", "Tel", "Tel.");
+                if (!string.IsNullOrWhiteSpace(telefonoFila))
+                    outputRow.Telefono = telefonoFila;
+
+                var mailFila = GetCellValue(dataRow, columnMap,
+                    "Mail", "Email", "E-mail", "Correo", "Correo Electronico", "Correo Electrónico");
+                if (!string.IsNullOrWhiteSpace(mailFila))
+                    outputRow.Mail = mailFila;
+
+                outputRow.Telefono = NormalizeTelefono(outputRow.Telefono);
+                outputRow.CodPostal = NormalizeCodPostal(outputRow.CodPostal);
+                outputRow.Localidad = NormalizeLocalidad(outputRow.Localidad);
+                outputRow.Provincia = NormalizeProvincia(outputRow.Provincia);
 
                 // Datos de trabajador (desde columnas) con nombres de encabezado flexibles
                 outputRow.Cuil = GetCellValue(dataRow, columnMap,
@@ -206,7 +235,7 @@ public class XlsxOrderParser
 
         foreach (var cell in headerRow.CellsUsed())
         {
-            var headerText = cell.GetString().Trim();
+            var headerText = GetCellText(cell);
             if (!string.IsNullOrWhiteSpace(headerText))
             {
                 var norm = NormalizeHeader(headerText);
@@ -225,9 +254,43 @@ public class XlsxOrderParser
         var idx = FindColumnIndex(columnMap, candidates);
         if (idx > 0)
         {
-            return row.Cell(idx).GetString().Trim();
+            return GetCellText(row.Cell(idx));
         }
         return string.Empty;
+    }
+
+    private static string GetLabeledValue(IXLCell labelCell)
+    {
+        var ownText = GetCellText(labelCell);
+        var colonIndex = ownText.IndexOf(':');
+        if (colonIndex >= 0 && colonIndex < ownText.Length - 1)
+        {
+            var inlineValue = ownText[(colonIndex + 1)..].Trim();
+            if (!string.IsNullOrWhiteSpace(inlineValue))
+                return inlineValue;
+        }
+
+        for (int offset = 1; offset <= 3; offset++)
+        {
+            var candidate = GetCellText(labelCell.Worksheet.Cell(labelCell.Address.RowNumber, labelCell.Address.ColumnNumber + offset));
+            if (!string.IsNullOrWhiteSpace(candidate))
+                return candidate;
+        }
+
+        return string.Empty;
+    }
+
+    private static string GetCellText(IXLCell cell)
+    {
+        var text = cell.GetFormattedString().Trim();
+        if (!string.IsNullOrWhiteSpace(text))
+            return text;
+
+        text = cell.GetString().Trim();
+        if (!string.IsNullOrWhiteSpace(text))
+            return text;
+
+        return cell.Value.ToString().Trim();
     }
 
     private bool IsEmptyRow(IXLRow row)
@@ -282,16 +345,18 @@ public class XlsxOrderParser
         return -1;
     }
 
-    private (string Contrato, string CUIT, string RazonSocial, string NroEstablecimiento,
-             string Localidad, string Provincia, string Telefono, string CodPostal) ExtractCompanyDataFromSheet(IXLWorksheet worksheet, int headerRowNumber, string? debugCpPath)
+    private (string Contrato, string CUIT, string RazonSocial, string Calle, string NroEstablecimiento,
+             string Localidad, string Provincia, string Telefono, string Mail, string CodPostal) ExtractCompanyDataFromSheet(IXLWorksheet worksheet, int headerRowNumber, string? debugCpPath)
     {
         var contrato = string.Empty;
         var cuit = string.Empty;
         var razonSocial = string.Empty;
+        var calle = string.Empty;
         var nroEstablecimiento = string.Empty;
         var localidad = string.Empty;
         var provincia = string.Empty;
         var telefono = string.Empty;
+        var mail = string.Empty;
         var codPostal = string.Empty;
 
         // Buscar en la zona superior, pero evitando la fila de encabezados (para no capturar
@@ -307,28 +372,23 @@ public class XlsxOrderParser
             
             foreach (var cell in row.CellsUsed())
             {
-                var value = cell.GetString().ToUpper();
+                var value = GetCellText(cell).ToUpperInvariant();
 
                 if (value.Contains("CONTRATO") || value.Contains("NRO. CONTRATO"))
                 {
-                    // Buscar valor en la celda siguiente
-                    var nextCell = cell.CellRight();
-                    contrato = nextCell.GetString().Trim();
+                    contrato = GetLabeledValue(cell);
                 }
                 else if (value.Contains("CUIT"))
                 {
-                    var nextCell = cell.CellRight();
-                    cuit = nextCell.GetString().Trim();
+                    cuit = GetLabeledValue(cell);
                 }
                 else if (value.Contains("RAZÓN SOCIAL") || value.Contains("RAZON SOCIAL") || value.Contains("EMPLEADOR"))
                 {
-                    var nextCell = cell.CellRight();
-                    razonSocial = nextCell.GetString().Trim();
+                    razonSocial = GetLabeledValue(cell);
                 }
                 else if (value.Contains("ESTABLECIMIENTO"))
                 {
-                    var nextCell = cell.CellRight();
-                    var candidate = nextCell.GetString().Trim();
+                    var candidate = GetLabeledValue(cell);
                     // Evitar capturar encabezados/labels de otras columnas (p.ej. "Fecha Solicitud")
                     if (!candidate.Contains("FECHA", StringComparison.OrdinalIgnoreCase) &&
                         !candidate.Contains("SOLICITUD", StringComparison.OrdinalIgnoreCase))
@@ -338,18 +398,23 @@ public class XlsxOrderParser
                 }
                 else if (value.Contains("LOCALIDAD"))
                 {
-                    var nextCell = cell.CellRight();
-                    localidad = nextCell.GetString().Trim();
+                    localidad = GetLabeledValue(cell);
                 }
-                else if (value.Contains("PROVINCIA"))
+                else if (value.Contains("DOMICILIO") || value.Contains("CALLE") || value.Contains("DIRECCION") || value.Contains("DIRECCIÓN"))
                 {
-                    var nextCell = cell.CellRight();
-                    provincia = nextCell.GetString().Trim();
+                    calle = GetLabeledValue(cell);
+                }
+                else if (value.Contains("PROVINCIA") || value.Contains("PROV.") || value.StartsWith("PCIA"))
+                {
+                    provincia = GetLabeledValue(cell);
                 }
                 else if (value.Contains("TELÉFONO") || value.Contains("TELEFONO"))
                 {
-                    var nextCell = cell.CellRight();
-                    telefono = nextCell.GetString().Trim();
+                    telefono = GetLabeledValue(cell);
+                }
+                else if (value.Contains("MAIL") || value.Contains("EMAIL") || value.Contains("E-MAIL") || value.Contains("CORREO"))
+                {
+                    mail = GetLabeledValue(cell);
                 }
             }
         }
@@ -390,15 +455,43 @@ public class XlsxOrderParser
 
                 var header = resumenSheet.Row(headerRowResumen);
                 int colSolapa = 0;
+                int colDomicilio = 0;
                 int colLocalidad = 0;
+                int colProvincia = 0;
+                int colTelefono = 0;
+                int colMail = 0;
 
                 foreach (var cell in header.CellsUsed())
                 {
-                    var text = cell.GetString();
+                    var text = GetCellText(cell);
                     if (colSolapa == 0 && text.Contains("Solapa", StringComparison.OrdinalIgnoreCase))
                         colSolapa = cell.Address.ColumnNumber;
+                    else if (colDomicilio == 0 &&
+                             (text.Contains("Domicilio", StringComparison.OrdinalIgnoreCase) ||
+                              text.Contains("Calle", StringComparison.OrdinalIgnoreCase) ||
+                              text.Contains("Direccion", StringComparison.OrdinalIgnoreCase) ||
+                              text.Contains("Dirección", StringComparison.OrdinalIgnoreCase)))
+                        colDomicilio = cell.Address.ColumnNumber;
                     else if (colLocalidad == 0 && text.Contains("Localidad", StringComparison.OrdinalIgnoreCase))
                         colLocalidad = cell.Address.ColumnNumber;
+                    else if (colProvincia == 0 &&
+                             (text.Contains("Provincia", StringComparison.OrdinalIgnoreCase) ||
+                              text.Contains("Prov.", StringComparison.OrdinalIgnoreCase) ||
+                              text.Equals("Prov", StringComparison.OrdinalIgnoreCase) ||
+                              text.Contains("Pcia", StringComparison.OrdinalIgnoreCase)))
+                        colProvincia = cell.Address.ColumnNumber;
+                      else if (colTelefono == 0 &&
+                             (text.Contains("Telefono", StringComparison.OrdinalIgnoreCase) ||
+                            text.Contains("Teléfono", StringComparison.OrdinalIgnoreCase) ||
+                            text.Equals("Tel", StringComparison.OrdinalIgnoreCase) ||
+                            text.Equals("Tel.", StringComparison.OrdinalIgnoreCase)))
+                        colTelefono = cell.Address.ColumnNumber;
+                    else if (colMail == 0 &&
+                             (text.Contains("Mail", StringComparison.OrdinalIgnoreCase) ||
+                              text.Contains("Email", StringComparison.OrdinalIgnoreCase) ||
+                              text.Contains("E-mail", StringComparison.OrdinalIgnoreCase) ||
+                              text.Contains("Correo", StringComparison.OrdinalIgnoreCase)))
+                        colMail = cell.Address.ColumnNumber;
                 }
 
                 if (colSolapa > 0 && colLocalidad > 0)
@@ -408,7 +501,7 @@ public class XlsxOrderParser
                         try
                         {
                             File.AppendAllText(debugCpPath,
-                                $"Resumen headerRow={headerRowResumen} colSolapa={colSolapa} colLocalidad={colLocalidad} dataIndex={dataIndex}{Environment.NewLine}");
+                                $"Resumen headerRow={headerRowResumen} colSolapa={colSolapa} colDomicilio={colDomicilio} colLocalidad={colLocalidad} colProvincia={colProvincia} dataIndex={dataIndex}{Environment.NewLine}");
                         }
                         catch { }
                     }
@@ -416,7 +509,7 @@ public class XlsxOrderParser
                     var lastDataRowResumen = resumenSheet.LastRowUsed()?.RowNumber() ?? (headerRowResumen + 1);
                     for (int r = headerRowResumen + 1; r <= lastDataRowResumen; r++)
                     {
-                        var solapaText = resumenSheet.Cell(r, colSolapa).GetString().Trim();
+                        var solapaText = GetCellText(resumenSheet.Cell(r, colSolapa));
                         if (!int.TryParse(solapaText, out var solapaNum))
                             continue;
 
@@ -425,7 +518,14 @@ public class XlsxOrderParser
                         if (solapaNum != dataIndex)
                             continue;
 
-                        var locRaw = resumenSheet.Cell(r, colLocalidad).GetString().Trim();
+                        if (colDomicilio > 0)
+                        {
+                            var domicilioResumen = GetCellText(resumenSheet.Cell(r, colDomicilio));
+                            if (!string.IsNullOrWhiteSpace(domicilioResumen))
+                                calle = domicilioResumen;
+                        }
+
+                        var locRaw = GetCellText(resumenSheet.Cell(r, colLocalidad));
                         var match = Regex.Match(locRaw, @"^\((\d{3,5})\)\s*(.+)$");
                         if (match.Success)
                         {
@@ -443,6 +543,27 @@ public class XlsxOrderParser
                                 }
                                 catch { }
                             }
+                        }
+
+                        if (colProvincia > 0)
+                        {
+                            var provinciaResumen = GetCellText(resumenSheet.Cell(r, colProvincia));
+                            if (string.IsNullOrWhiteSpace(provincia) && !string.IsNullOrWhiteSpace(provinciaResumen))
+                                provincia = provinciaResumen;
+                        }
+
+                        if (colTelefono > 0)
+                        {
+                            var telefonoResumen = GetCellText(resumenSheet.Cell(r, colTelefono));
+                            if ((!HasPhoneDigits(telefono) || string.IsNullOrWhiteSpace(telefono)) && !string.IsNullOrWhiteSpace(telefonoResumen))
+                                telefono = telefonoResumen;
+                        }
+
+                        if (colMail > 0)
+                        {
+                            var mailResumen = GetCellText(resumenSheet.Cell(r, colMail));
+                            if (string.IsNullOrWhiteSpace(mail) && !string.IsNullOrWhiteSpace(mailResumen))
+                                mail = mailResumen;
                         }
 
                         break;
@@ -472,7 +593,70 @@ public class XlsxOrderParser
             // Ignorar si la hoja no tiene C2 utilizable
         }
 
-        return (contrato, cuit, razonSocial, nroEstablecimiento, localidad, provincia, telefono, codPostal);
+        telefono = NormalizeTelefono(telefono);
+        codPostal = NormalizeCodPostal(codPostal);
+        localidad = NormalizeLocalidad(localidad);
+        provincia = NormalizeProvincia(provincia);
+
+        return (contrato, cuit, razonSocial, calle, nroEstablecimiento, localidad, provincia, telefono, mail, codPostal);
+    }
+
+    private static string NormalizeCodPostal(string? codPostal)
+    {
+        if (string.IsNullOrWhiteSpace(codPostal))
+            return string.Empty;
+
+        var match = Regex.Match(codPostal, @"\d{3,5}");
+        return match.Success ? match.Value.Trim() : codPostal.Trim();
+    }
+
+    private static bool HasPhoneDigits(string? telefono)
+        => !string.IsNullOrWhiteSpace(telefono) && Regex.IsMatch(telefono, @"\d{6,}");
+
+    private static string NormalizeTelefono(string? telefono)
+    {
+        if (string.IsNullOrWhiteSpace(telefono))
+            return string.Empty;
+
+        var matches = Regex.Matches(telefono, @"\+?[\d\s\-()]{6,}")
+            .Select(m => m.Value.Trim())
+            .Where(m => Regex.IsMatch(m, @"\d{6,}"))
+            .ToList();
+
+        if (matches.Count == 0)
+            return string.Empty;
+
+        return string.Join(" / ", matches.Distinct(StringComparer.OrdinalIgnoreCase));
+    }
+
+    private static string NormalizeLocalidad(string? localidad)
+    {
+        if (string.IsNullOrWhiteSpace(localidad))
+            return string.Empty;
+
+        var normalized = localidad.Trim();
+        normalized = Regex.Replace(normalized, @"^\(\d+\)\s*", string.Empty);
+        normalized = Regex.Replace(normalized, @"[-\s]+(B\s*A|BUENOS\s+AIRES)\s*$", string.Empty, RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(normalized.ToUpperInvariant(), @"\s+", " ");
+        return normalized.Trim();
+    }
+
+    private static string NormalizeProvincia(string? provincia)
+    {
+        if (string.IsNullOrWhiteSpace(provincia))
+            return string.Empty;
+
+        var normalized = Regex.Replace(provincia.Trim().ToUpperInvariant(), @"\s+", " ");
+
+        return normalized switch
+        {
+            "BA" => "BUENOS AIRES",
+            "B A" => "BUENOS AIRES",
+            "BS AS" => "BUENOS AIRES",
+            "BS. AS." => "BUENOS AIRES",
+            "BSAS" => "BUENOS AIRES",
+            _ => normalized
+        };
     }
 
     private static bool TryParseNroEstablecimiento(string text, out string nro, out string razon)

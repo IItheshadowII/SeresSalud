@@ -16,11 +16,10 @@ public sealed class CompanyResolutionService
     }
 
     /// <summary>
-    /// Guarda una empresa en la base aplicando la política CUIT/sede:
-    /// - Si existe mismo CUIT: mostrar como "Posible sede adicional".
-    /// - Solo considerar "duplicado" si coincide sede.
-    /// - Acciones: unificar / mantener / ignorar.
-    /// - Persistir decisión para no repetir.
+    /// Guarda una empresa en la base aplicando política CUIT/sede.
+    /// - Si coincide CUIT + misma sede: unifica (actualiza registro existente).
+    /// - Si coincide CUIT + distinta sede: crea nuevo registro.
+    /// - Si faltan datos de sede, usa resolución interactiva y cache de decisión.
     /// </summary>
     public bool SaveWithResolution(IWin32Window owner, CompanyRecord company)
     {
@@ -47,6 +46,22 @@ public sealed class CompanyResolutionService
         if (existingByCuit.Count == 0)
         {
             _repository.SaveCompany(company, forceNew: false);
+            return true;
+        }
+
+        var sameSede = _repository.FindByCuitAndSede(company, excludeRowIndex: company.RowIndex);
+        if (sameSede != null)
+        {
+            company.RowIndex = sameSede.RowIndex;
+            _repository.SaveCompany(company, forceNew: false);
+            return true;
+        }
+
+        if (CompanySedeUtils.HasComparableSedeData(company))
+        {
+            // Mismo CUIT pero dirección distinta: guardar como sede adicional.
+            company.RowIndex = 0;
+            _repository.SaveCompany(company, forceNew: true);
             return true;
         }
 

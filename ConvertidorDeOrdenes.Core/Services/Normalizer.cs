@@ -32,9 +32,21 @@ public class Normalizer
         // Normalizar empleador y número de establecimiento
         NormalizeEmpleador(row);
 
-        // La columna E-CodPostal debe quedar siempre vacía.
-        // Si la localidad viene con prefijo "(6034)", se limpia en NormalizeLocalidad.
-        row.CodPostal = string.Empty;
+        if (string.IsNullOrWhiteSpace(row.CodPostal) && !string.IsNullOrWhiteSpace(row.Localidad))
+        {
+            var cpMatch = Regex.Match(row.Localidad, @"^\((\d{3,5})\)\s*(.+)$");
+            if (cpMatch.Success)
+            {
+                row.CodPostal = cpMatch.Groups[1].Value.Trim();
+                row.Localidad = cpMatch.Groups[2].Value.Trim();
+            }
+        }
+
+        // Conservamos el CP para Empresas.xlsx y también para revisión/exportación.
+        if (string.IsNullOrWhiteSpace(row.ResolvedCompanyCodPostal) && !string.IsNullOrWhiteSpace(row.CodPostal))
+        {
+            row.ResolvedCompanyCodPostal = row.CodPostal;
+        }
 
         // Normalizar localidad
         row.Localidad = NormalizeLocalidad(row.Localidad);

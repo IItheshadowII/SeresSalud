@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 namespace ConvertidorDeOrdenes.Core.Models;
 
 /// <summary>
@@ -79,4 +81,10 @@ public class OutputRow
 
     // Y - Opcional
     public string Id { get; set; } = string.Empty;
+
+    [Browsable(false)]
+    public int ResolvedCompanyRowIndex { get; set; }
+
+    [Browsable(false)]
+    public string ResolvedCompanyCodPostal { get; set; } = string.Empty;
 }

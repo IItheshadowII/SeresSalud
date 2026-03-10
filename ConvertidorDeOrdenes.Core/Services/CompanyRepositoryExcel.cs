@@ -1,5 +1,6 @@
 using ConvertidorDeOrdenes.Core.Models;
 using ClosedXML.Excel;
+using System.Text.RegularExpressions;
 
 namespace ConvertidorDeOrdenes.Core.Services;
 
@@ -85,6 +86,7 @@ public class CompanyRepositoryExcel
 
         // Forzar formato de CUIT al persistir
         company.CUIT = CuitUtils.FormatOrKeep(company.CUIT);
+        NormalizeCompanyLocationFields(company);
 
         CompanyRecord? existing = null;
 
@@ -94,24 +96,11 @@ public class CompanyRepositoryExcel
             existing = _companies.FirstOrDefault(c => c.RowIndex == company.RowIndex);
         }
 
-        // 2) Si no hay RowIndex o no existe, intentar unificar solo si coincide CUIT + sede.
-        if (!forceNew && existing == null)
+        // 2) Nunca insertar una sede exacta ya existente del mismo CUIT,
+        // incluso si el caller pidió forceNew.
+        if (existing == null)
         {
-            var companyCuitDigits = CuitUtils.ExtractDigits(company.CUIT);
-            var companySedeKey = CompanySedeUtils.ComputeSedeKey(company);
-
-            if (!string.IsNullOrWhiteSpace(companyCuitDigits))
-            {
-                existing = _companies.FirstOrDefault(c =>
-                {
-                    var cuitDigits = CuitUtils.ExtractDigits(c.CUIT);
-                    if (!cuitDigits.Equals(companyCuitDigits, StringComparison.OrdinalIgnoreCase))
-                        return false;
-
-                    var sedeKey = CompanySedeUtils.ComputeSedeKey(c);
-                    return sedeKey.Equals(companySedeKey, StringComparison.OrdinalIgnoreCase);
-                });
-            }
+            existing = FindByCuitAndSede(company, excludeRowIndex: company.RowIndex);
         }
 
         if (existing != null)
@@ -139,6 +128,26 @@ public class CompanyRepositoryExcel
 
         // Guardar a archivo
         SaveToFile();
+    }
+
+    public CompanyRecord? FindByCuitAndSede(CompanyRecord company, int excludeRowIndex = 0)
+    {
+        if (company == null)
+            throw new ArgumentNullException(nameof(company));
+
+        var cuitDigits = CuitUtils.ExtractDigits(company.CUIT);
+        if (string.IsNullOrWhiteSpace(cuitDigits) || !CompanySedeUtils.HasComparableSedeData(company))
+            return null;
+
+        return _companies.FirstOrDefault(c =>
+        {
+            if (excludeRowIndex > 0 && c.RowIndex == excludeRowIndex)
+                return false;
+
+            var existingCuitDigits = CuitUtils.ExtractDigits(c.CUIT);
+            return existingCuitDigits.Equals(cuitDigits, StringComparison.OrdinalIgnoreCase) &&
+                   CompanySedeUtils.IsSameSede(c, company);
+        });
     }
 
     /// <summary>
@@ -309,6 +318,8 @@ public class CompanyRepositoryExcel
                     Mail = Get(colMail)
                 };
 
+                NormalizeCompanyLocationFields(company);
+
                 _companies.Add(company);
                 rowIndex++;
             }
@@ -459,6 +470,12 @@ public class CompanyRepositoryExcel
         }
 
         return collapsed.ToString().Trim();
+    }
+
+    private static void NormalizeCompanyLocationFields(CompanyRecord company)
+    {
+        company.Localidad = CompanySedeUtils.NormalizeLocalidadPart(company.Localidad);
+        company.Provincia = CompanySedeUtils.NormalizeProvinciaPart(company.Provincia);
     }
 
     private void SaveToFile()

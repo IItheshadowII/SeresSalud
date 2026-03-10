@@ -345,7 +345,7 @@ public class CompanyResolutionForm : Form
             Cursor = Cursors.Hand
         };
         _btnCerrar.FlatAppearance.BorderSize = 0;
-        _btnCerrar.Click += (_, _) => { DialogResult = DialogResult.OK; Close(); };
+        _btnCerrar.Click += BtnAceptar_Click;
 
         bottomPanel.Controls.Add(_btnBuscarBase);
         bottomPanel.Controls.Add(_btnBuscarCuitOnline);
@@ -362,6 +362,21 @@ public class CompanyResolutionForm : Form
             return null;
 
         return _dgvEmpresas.CurrentRow.DataBoundItem as OutputRow;
+    }
+
+    private void BtnAceptar_Click(object? sender, EventArgs e)
+    {
+        try
+        {
+            PersistResolvedCompanies();
+            DialogResult = DialogResult.OK;
+            Close();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error guardando empresas detectadas: {ex.Message}", "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private void BtnBuscarBase_Click(object? sender, EventArgs e)
@@ -428,11 +443,12 @@ public class CompanyResolutionForm : Form
 
         var company = new CompanyRecord
         {
+            RowIndex = row.ResolvedCompanyRowIndex,
             CUIT = row.CuitEmpleador ?? string.Empty,
             CIIU = row.CIIU ?? string.Empty,
             Empleador = row.Empleador ?? string.Empty,
             Calle = row.Calle ?? string.Empty,
-            CodPostal = row.CodPostal ?? string.Empty,
+            CodPostal = string.IsNullOrWhiteSpace(row.ResolvedCompanyCodPostal) ? row.CodPostal ?? string.Empty : row.ResolvedCompanyCodPostal,
             Localidad = row.Localidad ?? string.Empty,
             Provincia = row.Provincia ?? string.Empty,
             Telefono = row.Telefono ?? string.Empty,
@@ -504,11 +520,11 @@ public class CompanyResolutionForm : Form
             // Si el CUIT extraído ya existe en Empresas.xlsx, usamos esa empresa como
             // fuente de verdad y la aplicamos al resto de filas similares.
             var companies = _companyRepository.SearchByCuit(foundCuit);
-            if (companies.Count == 1)
+            var resolvedByAddress = ResolveCompanyByCuitAndAddress(companies, row);
+            if (resolvedByAddress != null)
             {
-                var company = companies[0];
-                ApplyCompanyData(row, company);
-                ApplyCompanyToSimilarRows(row, company);
+                ApplyCompanyData(row, resolvedByAddress);
+                ApplyCompanyToSimilarRows(row, resolvedByAddress);
             }
             else
             {
@@ -527,31 +543,21 @@ public class CompanyResolutionForm : Form
         for (int i = 0; i < total; i++)
         {
             var row = _rows[i];
-            // La columna E-CodPostal debe quedar siempre vacía.
+            ExtractCodPostalFromLocalidad(row);
+            if (string.IsNullOrWhiteSpace(row.ResolvedCompanyCodPostal) && !string.IsNullOrWhiteSpace(row.CodPostal))
+                row.ResolvedCompanyCodPostal = row.CodPostal;
+
+            // Limpiamos la localidad pero preservamos el CP extraído desde la orden.
             StripCodPostalFromLocalidad(row);
-            row.CodPostal = string.Empty;
 
             if (!string.IsNullOrWhiteSpace(row.CuitEmpleador))
             {
                 var companies = _companyRepository.SearchByCuit(row.CuitEmpleador);
 
-                if (companies.Count == 1)
+                var company = ResolveCompanyByCuitAndAddress(companies, row);
+                if (company != null)
                 {
-                    var company = companies[0];
-                    row.CuitEmpleador = company.CUIT;
-                    row.CIIU = company.CIIU;
-                    row.Empleador = company.Empleador;
-                    row.Calle = company.Calle;
-                    if (!string.IsNullOrWhiteSpace(company.Localidad))
-                        row.Localidad = company.Localidad;
-                    if (!string.IsNullOrWhiteSpace(company.Provincia))
-                        row.Provincia = company.Provincia;
-                    if (!string.IsNullOrWhiteSpace(company.Telefono))
-                        row.Telefono = company.Telefono;
-                    if (!string.IsNullOrWhiteSpace(company.Fax))
-                        row.Fax = company.Fax;
-                    if (!string.IsNullOrWhiteSpace(company.Mail))
-                        row.Mail = company.Mail;
+                    ApplyCompanyDataPreservingSede(row, company);
                 }
             }
             else if (!string.IsNullOrWhiteSpace(row.Empleador))
@@ -561,20 +567,7 @@ public class CompanyResolutionForm : Form
                 if (companies.Count == 1)
                 {
                     var company = companies[0];
-                    row.CuitEmpleador = company.CUIT;
-                    row.CIIU = company.CIIU;
-                    row.Empleador = company.Empleador;
-                    row.Calle = company.Calle;
-                    if (!string.IsNullOrWhiteSpace(company.Localidad))
-                        row.Localidad = company.Localidad;
-                    if (!string.IsNullOrWhiteSpace(company.Provincia))
-                        row.Provincia = company.Provincia;
-                    if (!string.IsNullOrWhiteSpace(company.Telefono))
-                        row.Telefono = company.Telefono;
-                    if (!string.IsNullOrWhiteSpace(company.Fax))
-                        row.Fax = company.Fax;
-                    if (!string.IsNullOrWhiteSpace(company.Mail))
-                        row.Mail = company.Mail;
+                    ApplyCompanyDataPreservingSede(row, company);
                 }
             }
 
@@ -599,6 +592,74 @@ public class CompanyResolutionForm : Form
             return string.Empty;
 
         return value.Trim().ToUpperInvariant();
+    }
+
+    private static bool TextEquals(string? left, string? right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+            return false;
+
+        return left.Trim().Equals(right.Trim(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsAddressCompatibleForPropagation(OutputRow sourceRow, OutputRow targetRow)
+    {
+        // Si el destino no tiene datos de dirección/sede, se permite completar.
+        var targetHasAddress =
+            !string.IsNullOrWhiteSpace(targetRow.Calle) ||
+            !string.IsNullOrWhiteSpace(targetRow.Localidad) ||
+            !string.IsNullOrWhiteSpace(targetRow.Provincia);
+
+        if (!targetHasAddress)
+            return true;
+
+        // Si ambos campos existen y difieren, consideramos que son sedes distintas.
+        if (!string.IsNullOrWhiteSpace(sourceRow.Provincia) && !string.IsNullOrWhiteSpace(targetRow.Provincia) &&
+            !TextEquals(sourceRow.Provincia, targetRow.Provincia))
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(sourceRow.Localidad) && !string.IsNullOrWhiteSpace(targetRow.Localidad) &&
+            !TextEquals(sourceRow.Localidad, targetRow.Localidad))
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(sourceRow.Calle) && !string.IsNullOrWhiteSpace(targetRow.Calle) &&
+            !TextEquals(sourceRow.Calle, targetRow.Calle))
+            return false;
+
+        return true;
+    }
+
+    private static CompanyRecord? ResolveCompanyByCuitAndAddress(IReadOnlyList<CompanyRecord> companies, OutputRow row)
+    {
+        if (companies.Count == 1)
+            return companies[0];
+
+        if (companies.Count <= 1)
+            return null;
+
+        var byProvincia = companies
+            .Where(c => TextEquals(c.Provincia, row.Provincia))
+            .ToList();
+
+        if (byProvincia.Count == 1)
+            return byProvincia[0];
+
+        var provinceScope = byProvincia.Count > 1 ? byProvincia : companies;
+
+        var byLocalidad = provinceScope
+            .Where(c => TextEquals(c.Localidad, row.Localidad))
+            .ToList();
+
+        if (byLocalidad.Count == 1)
+            return byLocalidad[0];
+
+        var localidadScope = byLocalidad.Count > 1 ? byLocalidad : provinceScope;
+
+        var byCalle = localidadScope
+            .Where(c => TextEquals(c.Calle, row.Calle))
+            .ToList();
+
+        return byCalle.Count == 1 ? byCalle[0] : null;
     }
 
     /// <summary>
@@ -626,13 +687,13 @@ public class CompanyResolutionForm : Form
             if (!string.IsNullOrEmpty(companyCuitDigits) && !string.IsNullOrEmpty(rowCuitDigits) &&
                 rowCuitDigits == companyCuitDigits)
             {
-                shouldApply = true;
+                shouldApply = IsAddressCompatibleForPropagation(sourceRow, row);
             }
             // Si la fila no tiene CUIT pero el nombre de empleador coincide, también aplicamos.
             else if (string.IsNullOrEmpty(rowCuitDigits) && !string.IsNullOrEmpty(companyNameKey) &&
                      NormalizeName(row.Empleador) == companyNameKey)
             {
-                shouldApply = true;
+                shouldApply = IsAddressCompatibleForPropagation(sourceRow, row);
             }
 
             if (!shouldApply)
@@ -687,24 +748,144 @@ public class CompanyResolutionForm : Form
             return;
 
         var match = Regex.Match(row.Localidad, "^\\((\\d{3,5})\\)\\s*(.+)$");
+        var localidad = match.Success ? match.Groups[2].Value.Trim() : row.Localidad;
+        row.Localidad = NormalizeLocalidadForAnalysis(localidad);
+    }
+
+    private static void ExtractCodPostalFromLocalidad(OutputRow row)
+    {
+        if (!string.IsNullOrWhiteSpace(row.CodPostal))
+            return;
+
+        if (string.IsNullOrWhiteSpace(row.Localidad))
+            return;
+
+        var match = Regex.Match(row.Localidad, "^\\((\\d{3,5})\\)\\s*(.+)$");
         if (!match.Success)
             return;
 
+        row.CodPostal = match.Groups[1].Value.Trim();
         row.Localidad = match.Groups[2].Value.Trim();
+    }
+
+    private void PersistResolvedCompanies()
+    {
+        var uniqueCompanies = _rows
+            .Where(HasPersistableCompanyData)
+            .Select(CreateCompanyRecordFromRow)
+            .GroupBy(BuildCompanyIdentityKey, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .ToList();
+
+        foreach (var company in uniqueCompanies)
+        {
+            PersistCompanyRecord(company);
+        }
+    }
+
+    private void PersistCompanyRecord(CompanyRecord company)
+    {
+        if (string.IsNullOrWhiteSpace(company.CUIT) || string.IsNullOrWhiteSpace(company.Empleador))
+            return;
+
+        if (company.RowIndex <= 0 && !CompanySedeUtils.HasComparableSedeData(company))
+            return;
+
+        _companyRepository.SaveCompany(company, forceNew: false);
+    }
+
+    private static bool HasPersistableCompanyData(OutputRow row)
+    {
+        return !string.IsNullOrWhiteSpace(row.CuitEmpleador) &&
+               !string.IsNullOrWhiteSpace(row.Empleador) &&
+               (row.ResolvedCompanyRowIndex > 0 ||
+                CompanySedeUtils.HasComparableSedeData(row.Calle, row.Localidad, row.Provincia));
+    }
+
+    private static CompanyRecord CreateCompanyRecordFromRow(OutputRow row)
+    {
+        return new CompanyRecord
+        {
+            RowIndex = row.ResolvedCompanyRowIndex,
+            CUIT = row.CuitEmpleador,
+            CIIU = row.CIIU,
+            Empleador = row.Empleador,
+            Calle = row.Calle,
+            CodPostal = string.IsNullOrWhiteSpace(row.ResolvedCompanyCodPostal) ? row.CodPostal : row.ResolvedCompanyCodPostal,
+            Localidad = row.Localidad,
+            Provincia = row.Provincia,
+            Telefono = row.Telefono,
+            Fax = row.Fax,
+            Mail = row.Mail
+        };
+    }
+
+    private static string BuildCompanyIdentityKey(CompanyRecord company)
+    {
+        if (company.RowIndex > 0)
+            return $"ROW:{company.RowIndex}";
+
+        var cuit = GetCuitDigits(company.CUIT);
+        var sede = CompanySedeUtils.ComputeSedeKey(company);
+        return $"{cuit}|{sede}";
+    }
+
+    private static string NormalizeLocalidadForAnalysis(string? localidad)
+    {
+        if (string.IsNullOrWhiteSpace(localidad))
+            return string.Empty;
+
+        var normalized = localidad.Trim();
+        normalized = Regex.Replace(normalized, @"^\(\d+\)\s*", string.Empty);
+        normalized = Regex.Replace(normalized, @"[-\s]+(B\s*A|BUENOS\s+AIRES)\s*$", string.Empty, RegexOptions.IgnoreCase);
+        return normalized.Trim();
     }
 
     private static void ApplyCompanyData(OutputRow row, CompanyRecord company)
     {
+        row.ResolvedCompanyRowIndex = company.RowIndex;
+        row.ResolvedCompanyCodPostal = company.CodPostal;
         row.CuitEmpleador = company.CUIT;
         row.CIIU = company.CIIU;
         row.Empleador = company.Empleador;
         row.Calle = company.Calle;
-        // La columna E-CodPostal debe quedar siempre vacía.
-        row.CodPostal = string.Empty;
+        row.CodPostal = company.CodPostal;
         row.Localidad = company.Localidad;
         row.Provincia = company.Provincia;
         row.Telefono = company.Telefono;
         row.Fax = company.Fax;
         row.Mail = company.Mail;
+    }
+
+    private static void ApplyCompanyDataPreservingSede(OutputRow row, CompanyRecord company)
+    {
+        row.ResolvedCompanyRowIndex = company.RowIndex;
+        row.ResolvedCompanyCodPostal = company.CodPostal;
+        row.CuitEmpleador = company.CUIT;
+        row.CIIU = company.CIIU;
+        row.Empleador = company.Empleador;
+
+        // En refrescos automáticos no pisamos la sede ya informada en la fila
+        // para evitar unificar erróneamente distintas plantas del mismo CUIT.
+        if (string.IsNullOrWhiteSpace(row.Calle) && !string.IsNullOrWhiteSpace(company.Calle))
+            row.Calle = company.Calle;
+
+        if (string.IsNullOrWhiteSpace(row.CodPostal) && !string.IsNullOrWhiteSpace(company.CodPostal))
+            row.CodPostal = company.CodPostal;
+
+        if (string.IsNullOrWhiteSpace(row.Localidad) && !string.IsNullOrWhiteSpace(company.Localidad))
+            row.Localidad = company.Localidad;
+
+        if (string.IsNullOrWhiteSpace(row.Provincia) && !string.IsNullOrWhiteSpace(company.Provincia))
+            row.Provincia = company.Provincia;
+
+        if (string.IsNullOrWhiteSpace(row.Telefono) && !string.IsNullOrWhiteSpace(company.Telefono))
+            row.Telefono = company.Telefono;
+
+        if (string.IsNullOrWhiteSpace(row.Fax) && !string.IsNullOrWhiteSpace(company.Fax))
+            row.Fax = company.Fax;
+
+        if (string.IsNullOrWhiteSpace(row.Mail) && !string.IsNullOrWhiteSpace(company.Mail))
+            row.Mail = company.Mail;
     }
 }

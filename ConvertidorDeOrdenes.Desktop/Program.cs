@@ -26,7 +26,8 @@ static class Program
         var art = artSelector.ArtSeleccionada;
 
         // Para futuras ARTs, el flujo puede ser distinto (otros archivos/columnas).
-        if (!string.Equals(art, "La Segunda", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(art, "La Segunda", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(art, "SMG", StringComparison.OrdinalIgnoreCase))
         {
             MessageBox.Show(
                 $"La ART '{art}' todavía no está implementada.\n\n" +
