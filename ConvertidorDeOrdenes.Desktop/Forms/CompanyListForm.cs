@@ -274,6 +274,7 @@ public sealed class CompanyListForm : Form
             CIIU = selected.CIIU,
             Empleador = selected.Empleador,
             Calle = selected.Calle,
+            NroEstablecimiento = selected.NroEstablecimiento,
             CodPostal = selected.CodPostal,
             Localidad = selected.Localidad,
             Provincia = selected.Provincia,

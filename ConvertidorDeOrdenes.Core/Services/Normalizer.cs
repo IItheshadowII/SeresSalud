@@ -31,6 +31,7 @@ public class Normalizer
 
         // Normalizar empleador y número de establecimiento
         NormalizeEmpleador(row);
+        row.NroEstablecimiento = NormalizeNroEstablecimiento(row.NroEstablecimiento);
 
         if (string.IsNullOrWhiteSpace(row.CodPostal) && !string.IsNullOrWhiteSpace(row.Localidad))
         {
@@ -122,6 +123,24 @@ public class Normalizer
             row.NroEstablecimiento = match.Groups[1].Value;
             row.Empleador = match.Groups[2].Value.Trim();
         }
+    }
+
+    private static string NormalizeNroEstablecimiento(string? nroEstablecimiento)
+    {
+        if (string.IsNullOrWhiteSpace(nroEstablecimiento))
+            return string.Empty;
+
+        var text = nroEstablecimiento.Trim();
+
+        var explicitMatch = Regex.Match(text, @"(?:^|\b)(?:EST\.?|ESTABLECIMIENTO|NRO\.?|N°|Nº)?\s*(\d+)\b", RegexOptions.IgnoreCase);
+        if (explicitMatch.Success)
+            return explicitMatch.Groups[1].Value.Trim();
+
+        var leadingNumberMatch = Regex.Match(text, @"^\s*(\d+)\s*[-–:].*$");
+        if (leadingNumberMatch.Success)
+            return leadingNumberMatch.Groups[1].Value.Trim();
+
+        return Regex.IsMatch(text, @"^\d+$") ? text : text;
     }
 
     /// <summary>

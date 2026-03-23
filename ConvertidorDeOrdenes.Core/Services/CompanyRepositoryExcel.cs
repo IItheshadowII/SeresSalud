@@ -109,6 +109,7 @@ public class CompanyRepositoryExcel
             existing.CIIU = company.CIIU;
             existing.Empleador = company.Empleador;
             existing.Calle = company.Calle;
+            existing.NroEstablecimiento = company.NroEstablecimiento;
             existing.CodPostal = company.CodPostal;
             existing.Localidad = company.Localidad;
             existing.Provincia = company.Provincia;
@@ -171,6 +172,7 @@ public class CompanyRepositoryExcel
                 CIIU = c.CIIU,
                 Empleador = c.Empleador,
                 Calle = c.Calle,
+                NroEstablecimiento = c.NroEstablecimiento,
                 CodPostal = c.CodPostal,
                 Localidad = c.Localidad,
                 Provincia = c.Provincia,
@@ -262,7 +264,7 @@ public class CompanyRepositoryExcel
             var headerA = worksheet.Cell(1, 1).GetString().Trim();
             var headerB = worksheet.Cell(1, 2).GetString().Trim();
 
-            int colCuit, colRazon, colCiiu, colCalle, colCodPostal, colLocalidad, colProvincia, colTelefono, colFax, colMail;
+            int colCuit, colRazon, colCiiu, colCalle, colNroEstablecimiento, colCodPostal, colLocalidad, colProvincia, colTelefono, colFax, colMail;
 
             if (headerA.Contains("RAZON", StringComparison.OrdinalIgnoreCase) ||
                 headerA.Contains("RAZÓN", StringComparison.OrdinalIgnoreCase))
@@ -271,6 +273,7 @@ public class CompanyRepositoryExcel
                 colRazon = 1;  // Razon Social
                 colCuit = 2;   // Cuit
                 colCalle = 3;  // Calle
+                colNroEstablecimiento = 0; // No existe
                 colLocalidad = 4; // Localidad
                 colProvincia = 5; // Provincia
                 colTelefono = 6;  // Telefono
@@ -293,6 +296,7 @@ public class CompanyRepositoryExcel
                 colTelefono = 8;
                 colFax = 9;
                 colMail = 10;
+                colNroEstablecimiento = 11;
             }
 
             // Leer desde fila 2 (saltando encabezado)
@@ -310,6 +314,7 @@ public class CompanyRepositoryExcel
                     CIIU = Get(colCiiu),
                     Empleador = Get(colRazon),
                     Calle = Get(colCalle),
+                    NroEstablecimiento = Get(colNroEstablecimiento),
                     CodPostal = Get(colCodPostal),
                     Localidad = Get(colLocalidad),
                     Provincia = Get(colProvincia),
@@ -496,6 +501,7 @@ public class CompanyRepositoryExcel
             worksheet.Cell(1, 8).Value = "Telefono";
             worksheet.Cell(1, 9).Value = "Fax";
             worksheet.Cell(1, 10).Value = "Mail";
+            worksheet.Cell(1, 11).Value = "NroEstablecimiento";
 
             // Datos
             int row = 2;
@@ -511,6 +517,7 @@ public class CompanyRepositoryExcel
                 worksheet.Cell(row, 8).Value = company.Telefono;
                 worksheet.Cell(row, 9).Value = company.Fax;
                 worksheet.Cell(row, 10).Value = company.Mail;
+                worksheet.Cell(row, 11).Value = company.NroEstablecimiento;
                 row++;
             }
 
@@ -540,6 +547,7 @@ public class CompanyRepositoryExcel
             worksheet.Cell(1, 8).Value = "Telefono";
             worksheet.Cell(1, 9).Value = "Fax";
             worksheet.Cell(1, 10).Value = "Mail";
+            worksheet.Cell(1, 11).Value = "NroEstablecimiento";
 
             workbook.SaveAs(_filePath);
         }

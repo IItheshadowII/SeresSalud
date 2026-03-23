@@ -823,6 +823,8 @@ public partial class MainForm : Form
                     row.CuitEmpleador = company.CUIT;
                     row.CIIU = company.CIIU;
                     row.Empleador = company.Empleador;
+                    if (!string.IsNullOrWhiteSpace(company.NroEstablecimiento))
+                        row.NroEstablecimiento = company.NroEstablecimiento;
                     row.Calle = company.Calle;
                     if (!string.IsNullOrWhiteSpace(company.CodPostal))
                         row.CodPostal = company.CodPostal;
@@ -843,13 +845,15 @@ public partial class MainForm : Form
                 // Intentar resolver por nombre de empresa cuando no tenemos CUIT
                 var companies = _companyRepository.SearchByName(row.Empleador);
 
-                if (companies.Count == 1)
+                var company = ResolveCompanyByCuitAndSede(companies, row);
+                if (company != null)
                 {
-                    var company = companies[0];
                     // Cuando matchea por nombre de empresa, también dejamos que DB gane.
                     row.CuitEmpleador = company.CUIT;
                     row.CIIU = company.CIIU;
                     row.Empleador = company.Empleador;
+                    if (!string.IsNullOrWhiteSpace(company.NroEstablecimiento))
+                        row.NroEstablecimiento = company.NroEstablecimiento;
                     row.Calle = company.Calle;
                     if (!string.IsNullOrWhiteSpace(company.CodPostal))
                         row.CodPostal = company.CodPostal;
@@ -875,20 +879,49 @@ public partial class MainForm : Form
 
     private static CompanyRecord? ResolveCompanyByCuitAndSede(IReadOnlyList<CompanyRecord> companies, OutputRow row)
     {
-        if (companies.Count == 1)
-            return companies[0];
-
         if (companies.Count <= 1)
+            return companies.Count == 1 && IsCompanyAutoResolvableForRow(companies[0], row) ? companies[0] : null;
+
+        var compatibleCompanies = companies
+            .Where(c => IsCompanyAutoResolvableForRow(c, row))
+            .ToList();
+
+        if (compatibleCompanies.Count == 1)
+            return compatibleCompanies[0];
+
+        if (compatibleCompanies.Count == 0)
             return null;
 
-        var byProvincia = companies
+        List<CompanyRecord> establishmentScope;
+        if (!string.IsNullOrWhiteSpace(row.NroEstablecimiento))
+        {
+            var byEstablecimiento = compatibleCompanies
+                .Where(c => TextEquals(c.NroEstablecimiento, row.NroEstablecimiento))
+                .ToList();
+
+            if (byEstablecimiento.Count == 1)
+                return byEstablecimiento[0];
+
+            establishmentScope = byEstablecimiento.Count > 1
+                ? byEstablecimiento
+                : compatibleCompanies.Where(c => string.IsNullOrWhiteSpace(c.NroEstablecimiento)).ToList();
+
+            if (establishmentScope.Count == 0)
+                return null;
+        }
+        else
+        {
+            establishmentScope = compatibleCompanies.ToList();
+        }
+
+        var byProvincia = establishmentScope
             .Where(c => TextEquals(c.Provincia, row.Provincia))
             .ToList();
 
         if (byProvincia.Count == 1)
             return byProvincia[0];
 
-        var provinceScope = byProvincia.Count > 1 ? byProvincia : companies;
+        var provinceScope = byProvincia.Count > 1 ? byProvincia : compatibleCompanies;
 
         var byLocalidad = provinceScope
             .Where(c => TextEquals(c.Localidad, row.Localidad))
@@ -904,6 +937,37 @@ public partial class MainForm : Form
             .ToList();
 
         return byCalle.Count == 1 ? byCalle[0] : null;
+    }
+
+    private static bool IsCompanyAutoResolvableForRow(CompanyRecord company, OutputRow row)
+    {
+        var rowHasComparableSede = CompanySedeUtils.HasComparableSedeData(row.Calle, row.Localidad, row.Provincia);
+        var rowHasEstablecimiento = !string.IsNullOrWhiteSpace(row.NroEstablecimiento);
+
+        if (!rowHasComparableSede && !rowHasEstablecimiento)
+            return false;
+
+        if (rowHasEstablecimiento)
+        {
+            if (string.IsNullOrWhiteSpace(company.NroEstablecimiento))
+                return false;
+
+            if (!TextEquals(company.NroEstablecimiento, row.NroEstablecimiento))
+                return false;
+        }
+
+        if (!rowHasComparableSede)
+            return true;
+
+        var rowCompany = new CompanyRecord
+        {
+            Calle = row.Calle ?? string.Empty,
+            Localidad = row.Localidad ?? string.Empty,
+            Provincia = row.Provincia ?? string.Empty,
+            NroEstablecimiento = row.NroEstablecimiento ?? string.Empty
+        };
+
+        return CompanySedeUtils.IsSameSede(company, rowCompany);
     }
 
     private static bool TextEquals(string? left, string? right)
@@ -1013,17 +1077,15 @@ public partial class MainForm : Form
             .Distinct()
             .Count();
 
-        var statusIcon = errors.Count > 0 ? "❌" : warnings.Count > 0 ? "⚠️" : "✅";
+        var statusIcon = errors.Count > 0 ? "❌" : "✅";
         var stats = $"{statusIcon} Total filas: {_parseResult.TotalRows} | " +
                    $"🏢 Empresas: {_parseResult.UniqueCompanies} | " +
                    $"👥 Empleados únicos: {uniqueEmployees} | " +
-                   $"⚠️ Warnings: {warnings.Count} | " +
                    $"❌ Errores: {errors.Count}";
 
         lblEstadisticas.Text = stats;
-        lblEstadisticas.ForeColor = errors.Count > 0 ? Color.FromArgb(180, 60, 60) : 
-                                    warnings.Count > 0 ? Color.FromArgb(180, 120, 0) : 
-                                    Color.FromArgb(60, 140, 60);
+        lblEstadisticas.ForeColor = errors.Count > 0 ? Color.FromArgb(180, 60, 60) :
+                        Color.FromArgb(60, 140, 60);
 
         foreach (var warning in warnings)
         {

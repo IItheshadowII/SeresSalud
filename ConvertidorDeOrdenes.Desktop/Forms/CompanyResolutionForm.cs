@@ -412,22 +412,39 @@ public class CompanyResolutionForm : Form
             return;
         }
 
-        if (companies.Count == 1)
+        var resolvedCompany = ResolveCompanyByCuitAndAddress(companies, row);
+        if (resolvedCompany != null)
         {
-            var company = companies[0];
-            ApplyCompanyData(row, company);
-            ApplyCompanyToSimilarRows(row, company);
+            ApplyCompanyData(row, resolvedCompany);
+            ApplyCompanyToSimilarRows(row, resolvedCompany);
             _dgvEmpresas.Refresh();
             return;
         }
 
         using var selectDialog = new CompanySelectDialog(companies, _companyRepository);
-        if (selectDialog.ShowDialog(this) == DialogResult.OK && selectDialog.SelectedCompany != null)
+        var dialogResult = selectDialog.ShowDialog(this);
+        if (dialogResult == DialogResult.OK && selectDialog.SelectedCompany != null)
         {
             var selectedCompany = selectDialog.SelectedCompany;
             ApplyCompanyData(row, selectedCompany);
             ApplyCompanyToSimilarRows(row, selectedCompany);
             _dgvEmpresas.Refresh();
+            return;
+        }
+
+        if (dialogResult == DialogResult.Yes)
+        {
+            var newCompany = CreateEditableCompanyFromRow(row);
+            var cuitRequired = string.IsNullOrWhiteSpace(newCompany.CUIT);
+
+            using var editDialog = new CompanyEditDialog(newCompany, cuitRequired);
+            if (editDialog.ShowDialog(this) == DialogResult.OK)
+            {
+                ApplyCompanyData(row, editDialog.Company);
+                ApplyCompanyToSimilarRows(row, editDialog.Company);
+                _resolutionService.SaveWithResolution(this, editDialog.Company);
+                _dgvEmpresas.Refresh();
+            }
         }
     }
 
@@ -441,20 +458,7 @@ public class CompanyResolutionForm : Form
             return;
         }
 
-        var company = new CompanyRecord
-        {
-            RowIndex = row.ResolvedCompanyRowIndex,
-            CUIT = row.CuitEmpleador ?? string.Empty,
-            CIIU = row.CIIU ?? string.Empty,
-            Empleador = row.Empleador ?? string.Empty,
-            Calle = row.Calle ?? string.Empty,
-            CodPostal = string.IsNullOrWhiteSpace(row.ResolvedCompanyCodPostal) ? row.CodPostal ?? string.Empty : row.ResolvedCompanyCodPostal,
-            Localidad = row.Localidad ?? string.Empty,
-            Provincia = row.Provincia ?? string.Empty,
-            Telefono = row.Telefono ?? string.Empty,
-            Fax = row.Fax ?? string.Empty,
-            Mail = row.Mail ?? string.Empty
-        };
+        var company = CreateEditableCompanyFromRow(row);
 
         var cuitRequired = string.IsNullOrWhiteSpace(company.CUIT);
 
@@ -465,6 +469,25 @@ public class CompanyResolutionForm : Form
             _resolutionService.SaveWithResolution(this, editDialog.Company);
             _dgvEmpresas.Refresh();
         }
+    }
+
+    private static CompanyRecord CreateEditableCompanyFromRow(OutputRow row)
+    {
+        return new CompanyRecord
+        {
+            RowIndex = row.ResolvedCompanyRowIndex,
+            CUIT = row.CuitEmpleador ?? string.Empty,
+            CIIU = row.CIIU ?? string.Empty,
+            Empleador = row.Empleador ?? string.Empty,
+            Calle = row.Calle ?? string.Empty,
+            NroEstablecimiento = row.NroEstablecimiento ?? string.Empty,
+            CodPostal = string.IsNullOrWhiteSpace(row.ResolvedCompanyCodPostal) ? row.CodPostal ?? string.Empty : row.ResolvedCompanyCodPostal,
+            Localidad = row.Localidad ?? string.Empty,
+            Provincia = row.Provincia ?? string.Empty,
+            Telefono = row.Telefono ?? string.Empty,
+            Fax = row.Fax ?? string.Empty,
+            Mail = row.Mail ?? string.Empty
+        };
     }
 
     private async void BtnRefrescar_Click(object? sender, EventArgs e)
@@ -564,9 +587,9 @@ public class CompanyResolutionForm : Form
             {
                 var companies = _companyRepository.SearchByName(row.Empleador);
 
-                if (companies.Count == 1)
+                var company = ResolveCompanyByCuitAndAddress(companies, row);
+                if (company != null)
                 {
-                    var company = companies[0];
                     ApplyCompanyDataPreservingSede(row, company);
                 }
             }
@@ -604,8 +627,13 @@ public class CompanyResolutionForm : Form
 
     private static bool IsAddressCompatibleForPropagation(OutputRow sourceRow, OutputRow targetRow)
     {
+        if (!string.IsNullOrWhiteSpace(sourceRow.NroEstablecimiento) && !string.IsNullOrWhiteSpace(targetRow.NroEstablecimiento) &&
+            !TextEquals(sourceRow.NroEstablecimiento, targetRow.NroEstablecimiento))
+            return false;
+
         // Si el destino no tiene datos de dirección/sede, se permite completar.
         var targetHasAddress =
+            !string.IsNullOrWhiteSpace(targetRow.NroEstablecimiento) ||
             !string.IsNullOrWhiteSpace(targetRow.Calle) ||
             !string.IsNullOrWhiteSpace(targetRow.Localidad) ||
             !string.IsNullOrWhiteSpace(targetRow.Provincia);
@@ -631,20 +659,49 @@ public class CompanyResolutionForm : Form
 
     private static CompanyRecord? ResolveCompanyByCuitAndAddress(IReadOnlyList<CompanyRecord> companies, OutputRow row)
     {
-        if (companies.Count == 1)
-            return companies[0];
-
         if (companies.Count <= 1)
+            return companies.Count == 1 && IsCompanyAutoResolvableForRow(companies[0], row) ? companies[0] : null;
+
+        var compatibleCompanies = companies
+            .Where(c => IsCompanyAutoResolvableForRow(c, row))
+            .ToList();
+
+        if (compatibleCompanies.Count == 1)
+            return compatibleCompanies[0];
+
+        if (compatibleCompanies.Count == 0)
             return null;
 
-        var byProvincia = companies
+        List<CompanyRecord> establishmentScope;
+        if (!string.IsNullOrWhiteSpace(row.NroEstablecimiento))
+        {
+            var byEstablecimiento = compatibleCompanies
+                .Where(c => TextEquals(c.NroEstablecimiento, row.NroEstablecimiento))
+                .ToList();
+
+            if (byEstablecimiento.Count == 1)
+                return byEstablecimiento[0];
+
+            establishmentScope = byEstablecimiento.Count > 1
+                ? byEstablecimiento
+                : compatibleCompanies.Where(c => string.IsNullOrWhiteSpace(c.NroEstablecimiento)).ToList();
+
+            if (establishmentScope.Count == 0)
+                return null;
+        }
+        else
+        {
+            establishmentScope = compatibleCompanies.ToList();
+        }
+
+        var byProvincia = establishmentScope
             .Where(c => TextEquals(c.Provincia, row.Provincia))
             .ToList();
 
         if (byProvincia.Count == 1)
             return byProvincia[0];
 
-        var provinceScope = byProvincia.Count > 1 ? byProvincia : companies;
+        var provinceScope = byProvincia.Count > 1 ? byProvincia : compatibleCompanies;
 
         var byLocalidad = provinceScope
             .Where(c => TextEquals(c.Localidad, row.Localidad))
@@ -660,6 +717,37 @@ public class CompanyResolutionForm : Form
             .ToList();
 
         return byCalle.Count == 1 ? byCalle[0] : null;
+    }
+
+    private static bool IsCompanyAutoResolvableForRow(CompanyRecord company, OutputRow row)
+    {
+        var rowHasComparableSede = CompanySedeUtils.HasComparableSedeData(row.Calle, row.Localidad, row.Provincia);
+        var rowHasEstablecimiento = !string.IsNullOrWhiteSpace(row.NroEstablecimiento);
+
+        if (!rowHasComparableSede && !rowHasEstablecimiento)
+            return false;
+
+        if (rowHasEstablecimiento)
+        {
+            if (string.IsNullOrWhiteSpace(company.NroEstablecimiento))
+                return false;
+
+            if (!TextEquals(company.NroEstablecimiento, row.NroEstablecimiento))
+                return false;
+        }
+
+        if (!rowHasComparableSede)
+            return true;
+
+        var rowCompany = new CompanyRecord
+        {
+            Calle = row.Calle ?? string.Empty,
+            Localidad = row.Localidad ?? string.Empty,
+            Provincia = row.Provincia ?? string.Empty,
+            NroEstablecimiento = row.NroEstablecimiento ?? string.Empty
+        };
+
+        return CompanySedeUtils.IsSameSede(company, rowCompany);
     }
 
     /// <summary>
@@ -788,18 +876,13 @@ public class CompanyResolutionForm : Form
         if (string.IsNullOrWhiteSpace(company.CUIT) || string.IsNullOrWhiteSpace(company.Empleador))
             return;
 
-        if (company.RowIndex <= 0 && !CompanySedeUtils.HasComparableSedeData(company))
-            return;
-
-        _companyRepository.SaveCompany(company, forceNew: false);
+        _resolutionService.SaveWithResolution(this, company);
     }
 
     private static bool HasPersistableCompanyData(OutputRow row)
     {
         return !string.IsNullOrWhiteSpace(row.CuitEmpleador) &&
-               !string.IsNullOrWhiteSpace(row.Empleador) &&
-               (row.ResolvedCompanyRowIndex > 0 ||
-                CompanySedeUtils.HasComparableSedeData(row.Calle, row.Localidad, row.Provincia));
+               !string.IsNullOrWhiteSpace(row.Empleador);
     }
 
     private static CompanyRecord CreateCompanyRecordFromRow(OutputRow row)
@@ -811,6 +894,7 @@ public class CompanyResolutionForm : Form
             CIIU = row.CIIU,
             Empleador = row.Empleador,
             Calle = row.Calle,
+            NroEstablecimiento = row.NroEstablecimiento,
             CodPostal = string.IsNullOrWhiteSpace(row.ResolvedCompanyCodPostal) ? row.CodPostal : row.ResolvedCompanyCodPostal,
             Localidad = row.Localidad,
             Provincia = row.Provincia,
@@ -849,6 +933,7 @@ public class CompanyResolutionForm : Form
         row.CIIU = company.CIIU;
         row.Empleador = company.Empleador;
         row.Calle = company.Calle;
+        row.NroEstablecimiento = company.NroEstablecimiento;
         row.CodPostal = company.CodPostal;
         row.Localidad = company.Localidad;
         row.Provincia = company.Provincia;
@@ -867,6 +952,9 @@ public class CompanyResolutionForm : Form
 
         // En refrescos automáticos no pisamos la sede ya informada en la fila
         // para evitar unificar erróneamente distintas plantas del mismo CUIT.
+        if (string.IsNullOrWhiteSpace(row.NroEstablecimiento) && !string.IsNullOrWhiteSpace(company.NroEstablecimiento))
+            row.NroEstablecimiento = company.NroEstablecimiento;
+
         if (string.IsNullOrWhiteSpace(row.Calle) && !string.IsNullOrWhiteSpace(company.Calle))
             row.Calle = company.Calle;
 

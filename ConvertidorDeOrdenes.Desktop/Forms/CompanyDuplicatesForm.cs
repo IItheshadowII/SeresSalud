@@ -7,7 +7,7 @@ namespace ConvertidorDeOrdenes.Desktop.Forms;
 
 /// <summary>
 /// Ventana para revisar y depurar duplicados en Empresas.xlsx
-/// (mismo CUIT y misma sede: Calle + Localidad + Provincia).
+/// (mismo CUIT y misma sede: Calle + Localidad + Provincia + NroEstablecimiento cuando exista).
 /// Permite unificar (eliminando duplicados) y eliminar registros seleccionados.
 /// </summary>
 public sealed class CompanyDuplicatesForm : Form
@@ -49,7 +49,7 @@ public sealed class CompanyDuplicatesForm : Form
 
         var lblSubtitulo = new Label
         {
-            Text = "Se consideran duplicados los registros con mismo CUIT y misma sede (Calle + Localidad + Provincia).",
+            Text = "Se consideran duplicados los registros con mismo CUIT y misma sede (Calle + Localidad + Provincia + Establecimiento cuando exista).",
             Font = new Font("Segoe UI", 9, FontStyle.Regular),
             ForeColor = Color.FromArgb(90, 90, 90),
             Location = new Point(25, 45),

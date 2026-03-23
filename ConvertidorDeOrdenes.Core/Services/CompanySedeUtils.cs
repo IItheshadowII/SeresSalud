@@ -6,21 +6,39 @@ namespace ConvertidorDeOrdenes.Core.Services;
 public static class CompanySedeUtils
 {
     public static string ComputeSedeKey(CompanyRecord company)
-        => ComputeSedeKey(company.Calle, company.Localidad, company.Provincia);
+        => ComputeSedeKey(company.Calle, company.Localidad, company.Provincia, company.NroEstablecimiento);
 
-    public static string ComputeSedeKey(string? calle, string? localidad, string? provincia)
+    public static string ComputeSedeKey(string? calle, string? localidad, string? provincia, string? nroEstablecimiento = null)
     {
         // La "sede" se define por domicilio + localidad + provincia.
+        // Si existe NroEstablecimiento, se usa para distinguir plantas con la misma dirección.
         // Normalizamos para comparar de forma estable.
         var calleKey = NormalizeStreetPart(calle);
         var locKey = NormalizeLocalidadPart(localidad);
         var provKey = NormalizeProvinciaPart(provincia);
+        var establecimientoKey = NormalizeEstablecimientoPart(nroEstablecimiento);
 
-        return $"{calleKey}|{locKey}|{provKey}";
+        return $"{calleKey}|{locKey}|{provKey}|{establecimientoKey}";
     }
 
     public static bool IsSameSede(CompanyRecord left, CompanyRecord right)
-        => ComputeSedeKey(left).Equals(ComputeSedeKey(right), StringComparison.OrdinalIgnoreCase);
+    {
+        var sameBaseAddress =
+            NormalizeStreetPart(left.Calle).Equals(NormalizeStreetPart(right.Calle), StringComparison.OrdinalIgnoreCase) &&
+            NormalizeLocalidadPart(left.Localidad).Equals(NormalizeLocalidadPart(right.Localidad), StringComparison.OrdinalIgnoreCase) &&
+            NormalizeProvinciaPart(left.Provincia).Equals(NormalizeProvinciaPart(right.Provincia), StringComparison.OrdinalIgnoreCase);
+
+        if (!sameBaseAddress)
+            return false;
+
+        var leftEst = NormalizeEstablecimientoPart(left.NroEstablecimiento);
+        var rightEst = NormalizeEstablecimientoPart(right.NroEstablecimiento);
+
+        if (!string.IsNullOrWhiteSpace(leftEst) && !string.IsNullOrWhiteSpace(rightEst))
+            return leftEst.Equals(rightEst, StringComparison.OrdinalIgnoreCase);
+
+        return true;
+    }
 
     public static bool HasComparableSedeData(CompanyRecord company)
         => HasComparableSedeData(company.Calle, company.Localidad, company.Provincia);
@@ -60,6 +78,23 @@ public static class CompanySedeUtils
             "BSAS" => "BUENOS AIRES",
             _ => normalized
         };
+    }
+
+    public static string NormalizeEstablecimientoPart(string? nroEstablecimiento)
+    {
+        var normalized = NormalizeKeyPart(nroEstablecimiento);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return string.Empty;
+
+        var explicitMatch = Regex.Match(normalized, @"(?:^|\b)(?:EST\.?|ESTABLECIMIENTO|NRO\.?|N°|Nº)?\s*(\d+)\b", RegexOptions.IgnoreCase);
+        if (explicitMatch.Success)
+            return explicitMatch.Groups[1].Value.Trim();
+
+        var leadingNumberMatch = Regex.Match(normalized, @"^(\d+)\s*[-–:].*$");
+        if (leadingNumberMatch.Success)
+            return leadingNumberMatch.Groups[1].Value.Trim();
+
+        return normalized;
     }
 
     private static string NormalizeKeyPart(string? text)

@@ -126,7 +126,7 @@ public sealed class CompanyCuitConflictDialog : Form
             ? $"Duplicado: mismo CUIT y misma sede ({formatted})."
             : $"Posible sede adicional: ya existe el CUIT {formatted}.";
 
-        _lblHint.Text = "Solo se marca como duplicado si coincide la sede. Seleccione un registro para unificar o elija mantener.";
+        _lblHint.Text = "Solo se marca como duplicado si coincide la sede. Si el establecimiento existe, también se usa para distinguir plantas.";
 
         _lstExisting.Items.Clear();
 
@@ -137,7 +137,8 @@ public sealed class CompanyCuitConflictDialog : Form
             var sedeKey = CompanySedeUtils.ComputeSedeKey(c);
             var sedeLabel = sedeKey.Equals(incomingSede, StringComparison.OrdinalIgnoreCase) ? " (misma sede)" : "";
 
-            _lstExisting.Items.Add($"[{c.RowIndex}] {c.Empleador} — {c.Calle} — {c.CodPostal} {c.Localidad}, {c.Provincia}{sedeLabel}");
+            var establecimientoLabel = string.IsNullOrWhiteSpace(c.NroEstablecimiento) ? string.Empty : $" — Establecimiento {c.NroEstablecimiento}";
+            _lstExisting.Items.Add($"[{c.RowIndex}] {c.Empleador} — {c.Calle} — {c.CodPostal} {c.Localidad}, {c.Provincia}{establecimientoLabel}{sedeLabel}");
 
             if (sedeLabel.Length > 0)
                 selectIndex = i;

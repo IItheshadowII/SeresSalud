@@ -9,6 +9,7 @@ public class CompanyRecord
     public string CIIU { get; set; } = string.Empty;
     public string Empleador { get; set; } = string.Empty;
     public string Calle { get; set; } = string.Empty;
+    public string NroEstablecimiento { get; set; } = string.Empty;
     public string CodPostal { get; set; } = string.Empty;
     public string Localidad { get; set; } = string.Empty;
     public string Provincia { get; set; } = string.Empty;

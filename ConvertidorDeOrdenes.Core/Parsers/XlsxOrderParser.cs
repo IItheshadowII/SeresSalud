@@ -136,6 +136,13 @@ public class XlsxOrderParser
                 if (!string.IsNullOrWhiteSpace(contratoFila))
                     outputRow.Contrato = contratoFila;
 
+                var establecimientoFila = GetCellValue(dataRow, columnMap,
+                    "Nro. Establecimiento", "Nro Establecimiento", "NroEstablecimiento",
+                    "Establecimiento", "Numero Establecimiento", "Número Establecimiento",
+                    "N° Establecimiento", "Nº Establecimiento");
+                if (!string.IsNullOrWhiteSpace(establecimientoFila))
+                    outputRow.NroEstablecimiento = establecimientoFila;
+
                 var empleadorFila = GetCellValue(dataRow, columnMap,
                     "Empresa", "Empleador", "Razon Social", "Razón Social");
                 if (!string.IsNullOrWhiteSpace(empleadorFila))

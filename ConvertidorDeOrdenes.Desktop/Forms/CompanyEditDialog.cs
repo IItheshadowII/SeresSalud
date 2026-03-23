@@ -15,6 +15,7 @@ public partial class CompanyEditDialog : Form
     private TextBox txtCIIU = null!;
     private TextBox txtEmpleador = null!;
     private TextBox txtCalle = null!;
+    private TextBox txtNroEstablecimiento = null!;
     private TextBox txtCodPostal = null!;
     private TextBox txtLocalidad = null!;
     private TextBox txtProvincia = null!;
@@ -39,7 +40,7 @@ public partial class CompanyEditDialog : Form
     {
         this.Text = "Datos de Empresa";
         this.Icon = AppIcon.TryGet();
-        this.Size = new Size(610, 640);
+        this.Size = new Size(610, 685);
         this.StartPosition = FormStartPosition.CenterParent;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
         this.MaximizeBox = false;
@@ -90,6 +91,11 @@ public partial class CompanyEditDialog : Form
         // Calle
         AddField("Calle:", ref txtCalle, y, labelWidth, textBoxWidth);
         txtCalle.PlaceholderText = "Domicilio";
+        y += spacing;
+
+        // Nro Establecimiento
+        AddField("Establecimiento:", ref txtNroEstablecimiento, y, labelWidth, textBoxWidth);
+        txtNroEstablecimiento.PlaceholderText = "Ej: 22";
         y += spacing;
 
         // Código Postal
@@ -186,6 +192,7 @@ public partial class CompanyEditDialog : Form
         txtCIIU.Text = Company.CIIU;
         txtEmpleador.Text = Company.Empleador;
         txtCalle.Text = Company.Calle;
+        txtNroEstablecimiento.Text = Company.NroEstablecimiento;
         txtCodPostal.Text = Company.CodPostal;
         txtLocalidad.Text = Company.Localidad;
         txtProvincia.Text = Company.Provincia;
@@ -219,6 +226,7 @@ public partial class CompanyEditDialog : Form
         Company.CIIU = txtCIIU.Text.Trim();
         Company.Empleador = txtEmpleador.Text.Trim();
         Company.Calle = txtCalle.Text.Trim();
+        Company.NroEstablecimiento = txtNroEstablecimiento.Text.Trim();
         Company.CodPostal = txtCodPostal.Text.Trim();
         Company.Localidad = txtLocalidad.Text.Trim();
         Company.Provincia = txtProvincia.Text.Trim();
@@ -378,7 +386,10 @@ public partial class CompanySelectDialog : Form
         
         foreach (var company in _filteredCompanies)
         {
-            var displayText = $"{company.CUIT} - {company.Empleador} - {company.Localidad}, {company.Provincia}";
+            var establecimiento = string.IsNullOrWhiteSpace(company.NroEstablecimiento)
+                ? "Sin establecimiento"
+                : $"Est. {company.NroEstablecimiento}";
+            var displayText = $"{company.CUIT} - {company.Empleador} - {establecimiento} - {company.Localidad}, {company.Provincia}";
             lstCompanies.Items.Add(displayText);
         }
 
@@ -424,7 +435,7 @@ public partial class CompanySelectDialog : Form
         {
             foreach (var c in _companies)
             {
-                var composite = $"{c.CUIT} {c.Empleador} {c.Localidad} {c.Provincia}".ToUpperInvariant();
+                var composite = $"{c.CUIT} {c.Empleador} {c.NroEstablecimiento} {c.Localidad} {c.Provincia}".ToUpperInvariant();
                 if (composite.Contains(term))
                     _filteredCompanies.Add(c);
             }
