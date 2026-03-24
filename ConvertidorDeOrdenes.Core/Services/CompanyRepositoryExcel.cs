@@ -86,6 +86,9 @@ public class CompanyRepositoryExcel
 
         // Forzar formato de CUIT al persistir
         company.CUIT = CuitUtils.FormatOrKeep(company.CUIT);
+        if (string.IsNullOrWhiteSpace(CuitUtils.ExtractDigits(company.CUIT)))
+            throw new InvalidOperationException("No se puede guardar una empresa sin CUIT.");
+
         NormalizeCompanyLocationFields(company);
 
         CompanyRecord? existing = null;

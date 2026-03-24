@@ -70,7 +70,7 @@ public class Normalizer
     }
 
     /// <summary>
-    /// Normaliza prestación: quita "cod: XXX", elimina acentos, aplica mapeo
+    /// Normaliza prestación sin renombrarla: solo limpia códigos auxiliares si estuvieran presentes.
     /// </summary>
     public string NormalizePrestacion(string prestacion, List<string> warnings)
     {
@@ -92,17 +92,6 @@ public class Normalizer
         if (codePrefixMatch.Success)
         {
             normalized = codePrefixMatch.Groups[1].Value.Trim();
-        }
-
-        // Eliminar acentos
-        normalized = RemoveAccents(normalized);
-
-        // Aplicar mapeo si existe
-        var mapped = _prestacionMapper.Map(normalized);
-        if (mapped != normalized)
-        {
-            // Se aplicó mapeo
-            normalized = mapped;
         }
 
         return normalized;

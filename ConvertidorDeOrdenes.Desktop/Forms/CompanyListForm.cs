@@ -283,7 +283,7 @@ public sealed class CompanyListForm : Form
             Mail = selected.Mail
         };
 
-        using var dlg = new CompanyEditDialog(clone, cuitRequired: !string.IsNullOrWhiteSpace(clone.CUIT));
+        using var dlg = new CompanyEditDialog(clone, cuitRequired: true);
         if (dlg.ShowDialog(this) == DialogResult.OK)
         {
             _resolutionService.SaveWithResolution(this, dlg.Company);

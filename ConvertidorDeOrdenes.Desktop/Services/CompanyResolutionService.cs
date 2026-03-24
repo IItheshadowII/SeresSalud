@@ -28,15 +28,12 @@ public sealed class CompanyResolutionService
 
         company.CUIT = CuitUtils.FormatOrKeep(company.CUIT);
 
-        // Edición explícita: si tiene RowIndex, guardar directo.
-        if (company.RowIndex > 0)
-        {
-            _repository.SaveCompany(company, forceNew: false);
-            return true;
-        }
-
         var cuitDigits = CuitUtils.ExtractDigits(company.CUIT);
         if (string.IsNullOrWhiteSpace(cuitDigits))
+            throw new InvalidOperationException("No se puede guardar una empresa sin CUIT.");
+
+        // Edición explícita: si tiene RowIndex, guardar directo.
+        if (company.RowIndex > 0)
         {
             _repository.SaveCompany(company, forceNew: false);
             return true;
