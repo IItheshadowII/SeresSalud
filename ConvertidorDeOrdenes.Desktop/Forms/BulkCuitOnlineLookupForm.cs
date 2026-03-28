@@ -22,7 +22,6 @@ public sealed class BulkCuitOnlineLookupForm : Form
     private readonly ProgressBar _progress = new();
     private readonly Label _lblInfo = new();
 
-    private bool _cancelRequested = false;
     private bool _isScanning = false;
 
     public BulkCuitOnlineLookupForm(IEnumerable<string> targetContracts)
@@ -168,7 +167,6 @@ public sealed class BulkCuitOnlineLookupForm : Form
         if (_targetContracts.Count == 0 || _webView.CoreWebView2 == null) return;
         if (_isScanning)
         {
-            _cancelRequested = true;
             _btnStart.Text = "Deteniendo...";
             try { await _webView.CoreWebView2.ExecuteScriptAsync("window.__cancelRobot = true;"); } catch { }
             return;
@@ -182,7 +180,6 @@ public sealed class BulkCuitOnlineLookupForm : Form
         }
 
         _isScanning = true;
-        _cancelRequested = false;
         try { await _webView.CoreWebView2.ExecuteScriptAsync("window.__cancelRobot = false;"); } catch { }
         _btnStart.Text = "🛑 Detener Robot";
         _btnStart.BackColor = Color.DarkRed;

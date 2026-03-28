@@ -23,7 +23,6 @@ public sealed class CuitOnlineLookupForm : Form
     private readonly WebView2 _webView = new();
     private readonly Button _btnExtraerCuit = new();
     private readonly Label _lblInfo = new();
-    private bool _autoFlowStarted;
     private string _rememberedUsername = string.Empty;
     private string _rememberedPassword = string.Empty;
     private int _loginAttempts;

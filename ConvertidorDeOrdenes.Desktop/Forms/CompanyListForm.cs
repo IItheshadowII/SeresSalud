@@ -120,6 +120,7 @@ public sealed class CompanyListForm : Form
             AutoGenerateColumns = true,
             ReadOnly = true,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            MultiSelect = true,
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,
             BackgroundColor = Color.White,
@@ -245,6 +246,17 @@ public sealed class CompanyListForm : Form
         return null;
     }
 
+    private List<CompanyRecord> GetSelectedCompanies()
+    {
+        return _dgv.SelectedRows
+            .Cast<DataGridViewRow>()
+            .Select(row => row.DataBoundItem as CompanyRecord)
+            .Where(company => company != null)
+            .GroupBy(company => company!.RowIndex)
+            .Select(group => group.First()!)
+            .ToList();
+    }
+
     private void BtnAgregar_Click(object? sender, EventArgs e)
     {
         var newCompany = new CompanyRecord();
@@ -293,16 +305,20 @@ public sealed class CompanyListForm : Form
 
     private void BtnEliminar_Click(object? sender, EventArgs e)
     {
-        var selected = GetSelectedCompany();
-        if (selected == null)
+        var selectedCompanies = GetSelectedCompanies();
+        if (selectedCompanies.Count == 0)
         {
-            MessageBox.Show("Seleccione una empresa para eliminar.", "Información",
+            MessageBox.Show("Seleccione una o más empresas para eliminar.", "Información",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
+        var confirmMessage = selectedCompanies.Count == 1
+            ? $"¿Confirma que desea eliminar la empresa:\n\n{selectedCompanies[0].CUIT} - {selectedCompanies[0].Empleador}?\n\nSe realizará un backup previo de Empresas.xlsx."
+            : $"¿Confirma que desea eliminar las {selectedCompanies.Count} empresas seleccionadas?\n\nSe realizará un backup previo de Empresas.xlsx.";
+
         var confirm = MessageBox.Show(
-            $"¿Confirma que desea eliminar la empresa:\n\n{selected.CUIT} - {selected.Empleador}?\n\nSe realizará un backup previo de Empresas.xlsx.",
+            confirmMessage,
             "Confirmar eliminación",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Warning);
@@ -312,8 +328,19 @@ public sealed class CompanyListForm : Form
 
         try
         {
-            _repository.DeleteCompany(selected);
+            foreach (var company in selectedCompanies)
+            {
+                _repository.DeleteCompany(company);
+            }
+
             LoadCompanies();
+
+            var deletedMessage = selectedCompanies.Count == 1
+                ? "Empresa eliminada correctamente."
+                : $"Se eliminaron {selectedCompanies.Count} empresas correctamente.";
+
+            MessageBox.Show(deletedMessage, "Eliminación completada",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
