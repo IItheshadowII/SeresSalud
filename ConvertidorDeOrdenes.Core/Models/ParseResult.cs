@@ -10,5 +10,6 @@ public class ParseResult
     public List<string> Errors { get; set; } = new();
     public int TotalRows => Rows.Count;
     public int UniqueCompanies => Rows.Select(r => r.CuitEmpleador).Distinct().Count();
+    public int UnicasAsignaciones => Rows.Select(r => new { r.CuitEmpleador, r.NroEstablecimiento }).Distinct().Count();
     public bool HasErrors => Errors.Count > 0;
 }

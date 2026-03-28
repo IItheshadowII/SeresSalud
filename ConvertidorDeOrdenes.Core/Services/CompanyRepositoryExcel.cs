@@ -1,5 +1,6 @@
 using ConvertidorDeOrdenes.Core.Models;
 using ClosedXML.Excel;
+using System.IO;
 using System.Text.RegularExpressions;
 
 namespace ConvertidorDeOrdenes.Core.Services;
@@ -334,9 +335,59 @@ public class CompanyRepositoryExcel
         }
         catch (Exception ex)
         {
+            if (IsCorruptedExcelException(ex))
+            {
+                try
+                {
+                    // Intentar recuperar moviendo el archivo corrupto
+                    var dir = Path.GetDirectoryName(_filePath) ?? string.Empty;
+                    var corruptPath = string.IsNullOrEmpty(dir) 
+                        ? _filePath + ".corrupt" 
+                        : Path.Combine(dir, Path.GetFileName(_filePath) + ".corrupt");
+                        
+                    if (File.Exists(corruptPath))
+                        File.Delete(corruptPath);
+                        
+                    File.Move(_filePath, corruptPath);
+
+                    // Buscar el último backup disponible
+                    var backups = Directory.GetFiles(dir, "*_backup_*.xlsx")
+                                         .OrderByDescending(f => File.GetLastWriteTime(f))
+                                         .ToList();
+
+                    if (backups.Any())
+                    {
+                        File.Copy(backups.First(), _filePath);
+                        LoadCompanies(); // Reintentar con el backup
+                        return;
+                    }
+                    else
+                    {
+                        // Si no hay backups, crear uno nuevo
+                        CreateEmptyFile();
+                        return;
+                    }
+                }
+                catch
+                {
+                    // Si falla la recuperación, lanzar la excepción original
+                    throw new Exception($"Error leyendo Empresas.xlsx en '{_filePath}': {ex.Message}", ex);
+                }
+            }
+            
             // No sobrescribir un archivo real si hubo error de lectura
             throw new Exception($"Error leyendo Empresas.xlsx en '{_filePath}': {ex.Message}", ex);
         }
+    }
+
+    private static bool IsCorruptedExcelException(Exception ex)
+    {
+        if (ex is InvalidDataException)
+            return true;
+
+        return ex.Message.Contains("corrupt", StringComparison.OrdinalIgnoreCase) ||
+               ex.Message.Contains("central directory", StringComparison.OrdinalIgnoreCase) ||
+               ex.Message.Contains("end of central directory", StringComparison.OrdinalIgnoreCase);
     }
 
     private static IXLWorksheet FindCompaniesWorksheet(XLWorkbook workbook)
@@ -524,7 +575,31 @@ public class CompanyRepositoryExcel
                 row++;
             }
 
-            workbook.SaveAs(_filePath);
+            var directory = Path.GetDirectoryName(_filePath) ?? string.Empty;
+            var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(_filePath);
+            var tempFile = Path.Combine(directory, $"{fileNameWithoutExtension}.tmp.xlsx");
+            var backupFile = Path.Combine(directory, $"{fileNameWithoutExtension}.replace.bak");
+
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+
+            if (File.Exists(backupFile))
+                File.Delete(backupFile);
+
+            workbook.SaveAs(tempFile);
+
+            if (File.Exists(_filePath))
+            {
+                // Reemplazar evitando dejar el archivo principal a medio escribir.
+                File.Replace(tempFile, _filePath, backupFile, ignoreMetadataErrors: true);
+
+                if (File.Exists(backupFile))
+                    File.Delete(backupFile);
+            }
+            else
+            {
+                File.Move(tempFile, _filePath);
+            }
         }
         catch (Exception ex)
         {

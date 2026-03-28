@@ -18,13 +18,19 @@ namespace ConvertidorDeOrdenes.Desktop.Forms;
 public sealed class CuitOnlineLookupForm : Form
 {
     private readonly string _contractNumber;
+    private readonly PortalLoginStateStore _portalLoginStateStore = new(AppPaths.PortalLoginStatePath);
 
     private readonly WebView2 _webView = new();
     private readonly Button _btnExtraerCuit = new();
     private readonly Label _lblInfo = new();
-
-    private bool _loginAttempted;
     private bool _autoFlowStarted;
+    private string _rememberedUsername = string.Empty;
+    private string _rememberedPassword = string.Empty;
+    private int _loginAttempts;
+    // Credenciales capturadas del formulario justo antes del submit.
+    private string _pendingUsername = string.Empty;
+    private string _pendingPassword = string.Empty;
+    private bool _wasOnLogin;
 
     /// <summary>
     /// CUIT encontrado (solo dígitos). Se establece cuando el usuario pulsa "Extraer CUIT".
@@ -54,7 +60,7 @@ public sealed class CuitOnlineLookupForm : Form
         };
 
         _lblInfo.Text =
-            "1) Inicie sesión en el portal (usuario/contraseña no se guardan)." + Environment.NewLine +
+            "1) Inicie sesión en el portal (la app recuerda usuario y contraseña automáticamente para la próxima vez)." + Environment.NewLine +
             "2) Vaya a 'Consulta de Operativos' / bandeja / tray." + Environment.NewLine +
             $"3) Busque el N° de Contrato {_contractNumber} usando el buscador del portal." + Environment.NewLine +
             "4) Cuando vea el operativo en la lista, pulse 'Extraer CUIT' para copiarlo en esta orden.";
@@ -84,6 +90,9 @@ public sealed class CuitOnlineLookupForm : Form
         Controls.Add(_webView);
         Controls.Add(headerPanel);
 
+        _rememberedUsername = _portalLoginStateStore.Load().RememberedUsername?.Trim() ?? string.Empty;
+    _rememberedPassword = PortalPasswordStore.TryLoad(AppPaths.PortalPasswordPath) ?? string.Empty;
+
         try
         {
             // IMPORTANTE: En instalaciones corporativas, la app suele vivir en Program Files.
@@ -95,10 +104,44 @@ public sealed class CuitOnlineLookupForm : Form
             };
 
             await _webView.EnsureCoreWebView2Async();
+            var jsSessionSync = @"
+                (function() {
+                    try {
+                        for (var i = 0; i < localStorage.length; i++) {
+                            var k = localStorage.key(i);
+                            if (k && k.indexOf('ss_backup_') === 0) {
+                                var origKey = k.substring(10);
+                                if (!sessionStorage.getItem(origKey)) {
+                                    sessionStorage.setItem(origKey, localStorage.getItem(k));
+                                }
+                            }
+                        }
+                        setInterval(function() {
+                            for (var i = 0; i < sessionStorage.length; i++) {
+                                var k = sessionStorage.key(i);
+                                if (k) localStorage.setItem('ss_backup_' + k, sessionStorage.getItem(k) || '');
+                            }
+                            for (var i = localStorage.length - 1; i >= 0; i--) {
+                                var k = localStorage.key(i);
+                                if (k && k.indexOf('ss_backup_') === 0) {
+                                    var origKey = k.substring(10);
+                                    if (!sessionStorage.getItem(origKey)) {
+                                        localStorage.removeItem(k);
+                                    }
+                                }
+                            }
+                        }, 500);
+                    } catch(e) {}
+                })();
+            ";
+            await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(jsSessionSync);
+
             _webView.CoreWebView2.Settings.IsStatusBarEnabled = true;
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
 
             _webView.CoreWebView2.NavigationCompleted += CoreWebView2OnNavigationCompleted;
+            _webView.CoreWebView2.SourceChanged += CoreWebView2OnSourceChanged;
+            _webView.CoreWebView2.WebMessageReceived += CoreWebView2OnWebMessageReceived;
 
             // Intentar ir directo a /tray; si no hay sesión, el servidor redirigirá a /login.
             _webView.Source = new Uri("https://lasegundaart-ml.conexia.com.ar/tray");
@@ -118,28 +161,50 @@ public sealed class CuitOnlineLookupForm : Form
 
     private async void CoreWebView2OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
     {
+        await ProcessUrlChangeAsync();
+    }
+
+    private async void CoreWebView2OnSourceChanged(object? sender, CoreWebView2SourceChangedEventArgs e)
+    {
+        await ProcessUrlChangeAsync();
+    }
+
+    private async Task ProcessUrlChangeAsync()
+    {
         if (_webView.CoreWebView2 == null)
             return;
 
         var url = _webView.Source?.ToString() ?? string.Empty;
+        var isLogin = url.Contains("/login", StringComparison.OrdinalIgnoreCase);
 
-        // Si estamos en login y todavía no intentamos login automático, hacerlo.
-        if (url.Contains("/login", StringComparison.OrdinalIgnoreCase) && !_loginAttempted)
+        // Si salimos de /login a otra página → login exitoso → persistir cookies y credenciales.
+        if (_wasOnLogin && !isLogin)
         {
-            _loginAttempted = true;
+            await PersistSessionCookiesAsync();
+
+            if (!string.IsNullOrWhiteSpace(_pendingUsername) && !string.IsNullOrWhiteSpace(_pendingPassword))
+            {
+                _rememberedUsername = _pendingUsername;
+                _rememberedPassword = _pendingPassword;
+                _portalLoginStateStore.Save(new PortalLoginState { RememberedUsername = _rememberedUsername });
+                PortalPasswordStore.TrySave(AppPaths.PortalPasswordPath, _rememberedPassword);
+            }
+        }
+
+        _wasOnLogin = isLogin;
+
+        // Si estamos en login y no excedimos los intentos automáticos, intentar auto-login.
+        if (isLogin && _loginAttempts < 2)
+        {
+            _loginAttempts++;
+            await InjectLoginHooksAsync();
             await TryAutoLoginAsync();
             return;
         }
 
-        // Cuando llegamos a /tray por primera vez, lanzar el flujo automático de búsqueda y extracción.
-        if (url.Contains("/tray", StringComparison.OrdinalIgnoreCase) && !_autoFlowStarted)
+        if (isLogin)
         {
-            _autoFlowStarted = true;
-
-            // Esperar un poco a que cargue la grilla de operativos.
-            await Task.Delay(3000);
-
-            await AutoExtractCuitAndCloseAsync();
+            await InjectLoginHooksAsync();
         }
     }
 
@@ -162,28 +227,52 @@ public sealed class CuitOnlineLookupForm : Form
 
             if (string.IsNullOrWhiteSpace(usuario) || string.IsNullOrWhiteSpace(password))
             {
+                usuario = _rememberedUsername;
+                password = _rememberedPassword;
+            }
+
+            if (string.IsNullOrWhiteSpace(usuario) || string.IsNullOrWhiteSpace(password))
+            {
                 // Sin credenciales configuradas, el usuario se loguea manualmente.
                 return;
             }
 
+            // JS robusto: usa el setter nativo de HTMLInputElement para compatibilidad
+            // con Angular/React (el .value directo no activa two-way binding).
+            // Reintenta varias veces porque el SPA puede no haber renderizado aún.
             var jsLogin =
                 "(function() {" +
-                "  try {" +
-                "    var user = '" + EscapeForJsString(usuario) + "';" +
-                "    var pass = '" + EscapeForJsString(password) + "';" +
-                "    var userInput = document.querySelector('input[type=email],input[name*=" + "\"user\"" + "],input[name*=" + "\"Usuario\"" + "],input[name*=" + "\"usuario\"" + "]');" +
+                "  var user = '" + EscapeForJsString(usuario) + "';" +
+                "  var pass = '" + EscapeForJsString(password) + "';" +
+                "  var nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;" +
+                "  function setVal(el, val) {" +
+                "    nativeSetter.call(el, val);" +
+                "    el.dispatchEvent(new Event('input', { bubbles: true }));" +
+                "    el.dispatchEvent(new Event('change', { bubbles: true }));" +
+                "    el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));" +
+                "    el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));" +
+                "  }" +
+                "  var attempts = 0;" +
+                "  function tryFill() {" +
+                "    attempts++;" +
+                "    var userInput = document.querySelector('input[type=email],input[name*=\"user\"],input[name*=\"Usuario\"],input[name*=\"usuario\"],input[type=text]');" +
                 "    var passInput = document.querySelector('input[type=password]');" +
-                "    if (!userInput || !passInput) return 'no-fields';" +
-                "    userInput.value = user;" +
-                "    userInput.dispatchEvent(new Event('input', { bubbles: true }));" +
-                "    passInput.value = pass;" +
-                "    passInput.dispatchEvent(new Event('input', { bubbles: true }));" +
-                "    var form = userInput.form || document.querySelector('form');" +
-                "    if (form) { form.submit(); return 'submitted'; }" +
-                "    var btn = document.querySelector('button[type=submit],button');" +
-                "    if (btn) { btn.click(); return 'clicked'; }" +
-                "    return 'no-submit';" +
-                "  } catch (e) { return 'error'; }" +
+                "    if (!userInput || !passInput) {" +
+                "      if (attempts < 15) setTimeout(tryFill, 400);" +
+                "      return;" +
+                "    }" +
+                "    setVal(userInput, user);" +
+                "    setTimeout(function() {" +
+                "      setVal(passInput, pass);" +
+                "      setTimeout(function() {" +
+                "        var btn = document.querySelector('button[type=submit],input[type=submit],button.btn-primary,button.btn,button');" +
+                "        if (btn) { btn.click(); return; }" +
+                "        var form = userInput.form || document.querySelector('form');" +
+                "        if (form) form.submit();" +
+                "      }, 300);" +
+                "    }, 300);" +
+                "  }" +
+                "  tryFill();" +
                 "})();";
 
             await _webView.CoreWebView2.ExecuteScriptAsync(jsLogin);
@@ -191,6 +280,119 @@ public sealed class CuitOnlineLookupForm : Form
         catch
         {
             // Si el login automático falla, el usuario aún puede loguearse manualmente.
+        }
+    }
+
+    /// <summary>
+    /// Inyecta hooks en el formulario de login para capturar credenciales al hacer submit.
+    /// </summary>
+    private async Task InjectLoginHooksAsync()
+    {
+        try
+        {
+            if (_webView.CoreWebView2 == null)
+                return;
+
+            // Hook: captura username/password en CADA click del botón e input,
+            // y los envía a C# via postMessage. Usa capturing phase para ejecutar
+            // antes que Angular procese el click.
+            var js =
+                "(function() {" +
+                "  if (window.__copilotLoginHooked) return 'already';" +
+                "  window.__copilotLoginHooked = true;" +
+                // Función que lee los campos actuales y envía a C#.
+                "  function sendCreds() {" +
+                "    try {" +
+                "      var u = document.querySelector('input[type=email],input[name*=\"user\"],input[name*=\"Usuario\"],input[name*=\"usuario\"],input[type=text]');" +
+                "      var p = document.querySelector('input[type=password]');" +
+                "      if (!u || !p) return;" +
+                "      var payload = JSON.stringify({ type: 'login-creds', username: u.value || '', password: p.value || '' });" +
+                "      window.chrome.webview.postMessage(payload);" +
+                "    } catch(e) {}" +
+                "  }" +
+                // Capturar en cada cambio para tener siempre el último valor.
+                "  document.addEventListener('input', sendCreds, true);" +
+                "  document.addEventListener('change', sendCreds, true);" +
+                // Capturar justo antes del click del botón (capturing phase).
+                "  document.addEventListener('click', function(ev) {" +
+                "    var btn = ev.target.closest('button,input[type=submit]');" +
+                "    if (btn) sendCreds();" +
+                "  }, true);" +
+                // También en submit del form.
+                "  document.addEventListener('submit', sendCreds, true);" +
+                "  return 'hooked';" +
+                "})();";
+
+            await _webView.CoreWebView2.ExecuteScriptAsync(js);
+        }
+        catch
+        {
+            // Si falla la inyección, el login manual sigue funcionando.
+        }
+    }
+
+    private void CoreWebView2OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        try
+        {
+            var payload = e.TryGetWebMessageAsString();
+            if (string.IsNullOrWhiteSpace(payload))
+                return;
+
+            var message = JsonSerializer.Deserialize<PortalLoginWebMessage>(payload);
+            if (!string.Equals(message?.Type, "login-creds", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var username = message?.Username?.Trim() ?? string.Empty;
+            var password = message?.Password ?? string.Empty;
+
+            // Guardar como pendientes; se persisten cuando el login es exitoso
+            // (navegación de /login a otra URL).
+            if (!string.IsNullOrWhiteSpace(username))
+                _pendingUsername = username;
+            if (!string.IsNullOrWhiteSpace(password))
+                _pendingPassword = password;
+        }
+        catch
+        {
+            // Ignorar mensajes inválidos del DOM.
+        }
+    }
+
+    /// <summary>
+    /// Convierte las cookies de sesión del portal en cookies persistentes (7 días)
+    /// para que sobrevivan al cierre del formulario/WebView2.
+    /// Las cookies de sesión no tienen fecha de expiración y se pierden al destruir el control.
+    /// </summary>
+    private async Task PersistSessionCookiesAsync()
+    {
+        try
+        {
+            if (_webView.CoreWebView2 == null)
+                return;
+
+            var cookieManager = _webView.CoreWebView2.CookieManager;
+            var cookies = await cookieManager.GetCookiesAsync("https://lasegundaart-ml.conexia.com.ar");
+            var newExpiry = DateTime.UtcNow.AddDays(7);
+
+            foreach (var cookie in cookies)
+            {
+                // IsSession == true indica cookie de sesión (sin expiración en disco).
+                if (cookie.IsSession)
+                {
+                    var newCookie = cookieManager.CreateCookie(cookie.Name, cookie.Value, cookie.Domain, cookie.Path);
+                    newCookie.IsHttpOnly = cookie.IsHttpOnly;
+                    newCookie.IsSecure = cookie.IsSecure;
+                    newCookie.SameSite = cookie.SameSite;
+                    newCookie.Expires = newExpiry;
+                    cookieManager.DeleteCookie(cookie);
+                    cookieManager.AddOrUpdateCookie(newCookie);
+                }
+            }
+        }
+        catch
+        {
+            // Si falla, el fallback de auto-login con credenciales sigue funcionando.
         }
     }
 
@@ -224,8 +426,6 @@ public sealed class CuitOnlineLookupForm : Form
             "        if (m && m[1]) return m[1];" +
             "      }" +
             "    }" +
-            "    var m2 = text.match(/CUIT:\\s*(\\d+)/i);" +
-            "    if (m2 && m2[1]) return m2[1];" +
             "    return null;" +
             "  } catch (e) { return null; }" +
             "})();";
@@ -304,4 +504,12 @@ public sealed class CuitOnlineLookupForm : Form
             .Replace("\r", " ")
             .Replace("\n", " ");
     }
+
+    private sealed class PortalLoginWebMessage
+    {
+        public string Type { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
 }
+

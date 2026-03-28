@@ -16,6 +16,7 @@ public class CompanyResolutionForm : Form
     private DataGridView _dgvEmpresas = null!;
     private Button _btnBuscarBase = null!;
     private Button _btnBuscarCuitOnline = null!;
+    private Button _btnEscaneoMasivo = null!;
     private Button _btnEditarEmpresa = null!;
     private Button _btnRefrescar = null!;
     private Button _btnCerrar = null!;
@@ -41,7 +42,7 @@ public class CompanyResolutionForm : Form
 
         var lblTitulo = new Label
         {
-            Text = "📋 Revisión de Datos de Empresas y Trabajadores",
+            Text = "\U0001F4CB Revision de Datos de Empresas y Trabajadores",
             Font = new Font("Segoe UI", 13, FontStyle.Bold),
             ForeColor = Color.FromArgb(50, 50, 50),
             Location = new Point(25, 15),
@@ -280,7 +281,7 @@ public class CompanyResolutionForm : Form
         {
             Text = "Buscar en Empresas.xlsx",
             Location = new Point(25, 20),
-            Size = new Size(200, 40),
+            Size = new Size(180, 40),
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
             BackColor = Color.FromArgb(70, 130, 180),
             ForeColor = Color.White,
@@ -288,13 +289,13 @@ public class CompanyResolutionForm : Form
             Cursor = Cursors.Hand
         };
         _btnBuscarBase.FlatAppearance.BorderSize = 0;
-        _btnBuscarBase.Click += BtnBuscarBase_Click;
+        _btnBuscarBase.Visible = false;
 
         _btnBuscarCuitOnline = new Button
         {
             Text = "Buscar CUIT online",
-            Location = new Point(235, 20),
-            Size = new Size(180, 40),
+            Location = new Point(215, 20),
+            Size = new Size(150, 40),
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
             BackColor = Color.FromArgb(100, 100, 160),
             ForeColor = Color.White,
@@ -303,12 +304,27 @@ public class CompanyResolutionForm : Form
         };
         _btnBuscarCuitOnline.FlatAppearance.BorderSize = 0;
         _btnBuscarCuitOnline.Click += BtnBuscarCuitOnline_Click;
+        _btnBuscarCuitOnline.Visible = false;
+
+        _btnEscaneoMasivo = new Button
+        {
+            Text = "\U0001F916 Robot MASIVO",
+            Location = new Point(25, 20), // Movido al inicio ya que se ocultaron los anteriores
+            Size = new Size(150, 40),
+            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            BackColor = Color.Navy,
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
+        };
+        _btnEscaneoMasivo.FlatAppearance.BorderSize = 0;
+        _btnEscaneoMasivo.Click += BtnEscaneoMasivo_Click;
 
         _btnEditarEmpresa = new Button
         {
-            Text = "Editar/Crear empresa",
-            Location = new Point(425, 20),
-            Size = new Size(180, 40),
+            Text = "Editar/Crear",
+            Location = new Point(185, 20), // 25 + 150 + 10
+            Size = new Size(120, 40),
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
             BackColor = Color.FromArgb(60, 140, 60),
             ForeColor = Color.White,
@@ -321,8 +337,8 @@ public class CompanyResolutionForm : Form
         _btnRefrescar = new Button
         {
             Text = "Refrescar datos",
-            Location = new Point(615, 20),
-            Size = new Size(180, 40),
+            Location = new Point(315, 20), // 185 + 120 + 10
+            Size = new Size(130, 40),
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
             BackColor = Color.FromArgb(255, 215, 115),
             ForeColor = Color.FromArgb(80, 60, 0),
@@ -349,6 +365,7 @@ public class CompanyResolutionForm : Form
 
         bottomPanel.Controls.Add(_btnBuscarBase);
         bottomPanel.Controls.Add(_btnBuscarCuitOnline);
+        bottomPanel.Controls.Add(_btnEscaneoMasivo);
         bottomPanel.Controls.Add(_btnEditarEmpresa);
         bottomPanel.Controls.Add(_btnRefrescar);
         bottomPanel.Controls.Add(_btnCerrar);
@@ -368,6 +385,12 @@ public class CompanyResolutionForm : Form
     {
         try
         {
+            this.UseWaitCursor = true;
+            Cursor.Current = Cursors.WaitCursor;
+            _btnCerrar.Text = "Guardando...";
+            _btnCerrar.Enabled = false;
+            Application.DoEvents(); // Force UI to update before long operation
+            
             PersistResolvedCompanies();
             DialogResult = DialogResult.OK;
             Close();
@@ -376,6 +399,13 @@ public class CompanyResolutionForm : Form
         {
             MessageBox.Show($"Error guardando empresas detectadas: {ex.Message}", "Error",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
+            _btnCerrar.Enabled = true;
+            _btnCerrar.Text = "Aceptar";
+        }
+        finally
+        {
+            this.UseWaitCursor = false;
+            Cursor.Current = Cursors.Default;
         }
     }
 
@@ -556,6 +586,43 @@ public class CompanyResolutionForm : Form
                 ApplyCuitToSimilarRows(row, foundCuit);
             }
 
+            _dgvEmpresas.Refresh();
+        }
+    }
+
+    private void BtnEscaneoMasivo_Click(object? sender, EventArgs e)
+    {
+        var targetContracts = _rows
+            .Where(r => string.IsNullOrWhiteSpace(r.CuitEmpleador) && !string.IsNullOrWhiteSpace(r.Contrato))
+            .Select(r => r.Contrato!)
+            .Distinct()
+            .ToList();
+
+        if (targetContracts.Count == 0)
+        {
+            MessageBox.Show("No se encontraron contratos válidos sin CUIT para buscar masivamente.");
+            return;
+        }
+
+        using var dlg = new BulkCuitOnlineLookupForm(targetContracts);
+        dlg.ShowDialog(this);
+
+        if (dlg.FoundCuits.Count > 0)
+        {
+            MessageBox.Show($"¡El escaneo del robot ha finalizado exitosamente!\nSe han encontrado {dlg.FoundCuits.Count} CUITs.", "Robot MASIVO", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            foreach (var kvp in dlg.FoundCuits)
+            {
+                var cuit = kvp.Value;
+                var contrato = kvp.Key;
+
+                var matchedRow = _rows.FirstOrDefault(r => r.Contrato == contrato);
+                if (matchedRow != null)
+                {
+                    matchedRow.CuitEmpleador = cuit;
+                    ApplyCuitToSimilarRows(matchedRow, cuit);
+                }
+            }
             _dgvEmpresas.Refresh();
         }
     }

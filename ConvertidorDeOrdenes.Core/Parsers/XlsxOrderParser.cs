@@ -1,4 +1,5 @@
 using ConvertidorDeOrdenes.Core.Models;
+using ConvertidorDeOrdenes.Core.Services;
 using ClosedXML.Excel;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -35,13 +36,14 @@ public class XlsxOrderParser
                 }
             }
 
-            // Si no hay hoja resumen, procesar todas las hojas excepto la primera
+            // Si hay hoja resumen, procesar todas las hojas de datos.
+            // Si no hay hoja resumen, procesar todas las hojas.
             var worksheetsToProcess = new List<IXLWorksheet>();
             
             if (resumenSheet != null)
             {
-                // Extraer referencias a solapas desde el resumen (si existen)
-                // Por ahora, procesar todas las demás hojas
+                // Extraer referencias a solapas desde el resumen (si existen).
+                // Por ahora, procesar todas las demás hojas.
                 try
                 {
                     var e3 = resumenSheet.Cell(3, 5).GetString();
@@ -54,13 +56,12 @@ public class XlsxOrderParser
 
                 worksheetsToProcess = workbook.Worksheets
                     .Where(ws => !ws.Name.Equals(resumenSheet.Name, StringComparison.OrdinalIgnoreCase))
-                    .Take(50) // Máximo 50 solapas
                     .ToList();
             }
             else
             {
                 // Procesar todas las hojas
-                worksheetsToProcess = workbook.Worksheets.Take(50).ToList();
+                worksheetsToProcess = workbook.Worksheets.ToList();
             }
 
             foreach (var worksheet in worksheetsToProcess)
@@ -141,7 +142,12 @@ public class XlsxOrderParser
                     "Establecimiento", "Numero Establecimiento", "Número Establecimiento",
                     "N° Establecimiento", "Nº Establecimiento");
                 if (!string.IsNullOrWhiteSpace(establecimientoFila))
-                    outputRow.NroEstablecimiento = establecimientoFila;
+                {
+                    var establecimientoNormalizado = NormalizeEstablecimientoValue(establecimientoFila);
+                    outputRow.NroEstablecimiento = string.IsNullOrWhiteSpace(establecimientoNormalizado)
+                        ? establecimientoFila
+                        : establecimientoNormalizado;
+                }
 
                 var empleadorFila = GetCellValue(dataRow, columnMap,
                     "Empresa", "Empleador", "Razon Social", "Razón Social");
@@ -369,9 +375,9 @@ public class XlsxOrderParser
         // Buscar en la zona superior, pero evitando la fila de encabezados (para no capturar
         // columnas como "Fecha Solicitud" cuando está al lado de "Nro Establecimiento").
         var last = worksheet.LastRowUsed()?.RowNumber() ?? 15;
-        var maxRowToScan = Math.Min(15, last);
-        if (headerRowNumber > 1)
-            maxRowToScan = Math.Min(maxRowToScan, headerRowNumber - 1);
+        var maxRowToScan = headerRowNumber > 1
+            ? Math.Min(15, Math.Min(last, headerRowNumber - 1))
+            : 0;
 
         for (int i = 1; i <= maxRowToScan; i++)
         {
@@ -681,6 +687,15 @@ public class XlsxOrderParser
         nro = match.Groups[1].Value.Trim();
         razon = match.Groups[2].Value.Trim();
         return !string.IsNullOrWhiteSpace(nro);
+    }
+
+    private static string NormalizeEstablecimientoValue(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var normalized = CompanySedeUtils.NormalizeEstablecimientoPart(value);
+        return string.IsNullOrWhiteSpace(normalized) ? value.Trim() : normalized;
     }
 
     /// <summary>

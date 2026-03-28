@@ -3,6 +3,7 @@ using ConvertidorDeOrdenes.Core.Parsers;
 using ConvertidorDeOrdenes.Core.Services;
 using ConvertidorDeOrdenes.Desktop.Services;
 using ConvertidorDeOrdenes.Desktop.Services.Updates;
+using System.Drawing.Drawing2D;
 using System.Text.RegularExpressions;
 
 namespace ConvertidorDeOrdenes.Desktop.Forms;
@@ -12,6 +13,16 @@ namespace ConvertidorDeOrdenes.Desktop.Forms;
 /// </summary>
 public partial class MainForm : Form
 {
+    private enum StatisticVisual
+    {
+        Rows,
+        Companies,
+        Assignments,
+        Employees,
+        ErrorsOk,
+        ErrorsFail
+    }
+
     private readonly WizardForm.TipoCarga _tipoCarga;
     private readonly string _frecuencia;
     private readonly string _referente;
@@ -36,6 +47,7 @@ public partial class MainForm : Form
     private Button btnAnalizar = null!;
     private DataGridView dgvPreview = null!;
     private Label lblEstadisticas = null!;
+    private FlowLayoutPanel pnlEstadisticas = null!;
     private Button btnExportar = null!;
     private Button btnCorregirErrores = null!;
     private Button btnNuevo = null!;
@@ -130,7 +142,7 @@ public partial class MainForm : Form
         // Título y subtítulo
         var lblTitulo = new Label
         {
-            Text = "📂 Procesamiento de Órdenes Médicas",
+            Text = "\U0001F4C2 Procesamiento de Órdenes Médicas",
             Font = new Font("Segoe UI", 13, FontStyle.Bold),
             ForeColor = Color.FromArgb(50, 50, 50),
             Location = new Point(25, 40),
@@ -150,7 +162,7 @@ public partial class MainForm : Form
         // Archivo
         lblArchivo = new Label
         {
-            Text = "📄 Archivo de entrada:",
+            Text = "\U0001F4C4 Archivo de entrada:",
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
             ForeColor = Color.FromArgb(60, 60, 60),
             Location = new Point(25, 108),
@@ -169,7 +181,7 @@ public partial class MainForm : Form
 
         btnSeleccionar = new Button
         {
-            Text = "📁 Elegir archivo...",
+            Text = "\U0001F4C1 Elegir archivo...",
             Location = new Point(955, 103),
             Size = new Size(140, 35),
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
@@ -242,17 +254,30 @@ public partial class MainForm : Form
         {
             Location = new Point(25, 535),
             Size = new Size(1180, 26),
-            Text = "ℹ️ Seleccione un archivo y pulse 'Analizar' para comenzar el procesamiento",
+            Text = "\u2139\uFE0F Seleccione un archivo y pulse 'Analizar' para comenzar el procesamiento",
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
             ForeColor = Color.FromArgb(80, 80, 80),
             TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
             Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
         };
 
+        pnlEstadisticas = new FlowLayoutPanel
+        {
+            Location = new Point(25, 535),
+            Size = new Size(1180, 26),
+            BackColor = Color.Transparent,
+            WrapContents = false,
+            AutoScroll = false,
+            Visible = false,
+            Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+
         // Título del log
         var lblLog = new Label
         {
-            Text = "📋 Registro de actividad:",
+            Text = "\U0001F4CB Registro de actividad:",
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
             ForeColor = Color.FromArgb(80, 80, 80),
             Location = new Point(25, 570),
@@ -340,6 +365,7 @@ public partial class MainForm : Form
         this.Controls.Add(dgvPreview);
         this.Controls.Add(separator1);
         this.Controls.Add(lblEstadisticas);
+        this.Controls.Add(pnlEstadisticas);
         this.Controls.Add(lblLog);
         this.Controls.Add(txtLog);
         this.Controls.Add(btnExportar);
@@ -1077,15 +1103,7 @@ public partial class MainForm : Form
             .Distinct()
             .Count();
 
-        var statusIcon = errors.Count > 0 ? "❌" : "✅";
-        var stats = $"{statusIcon} Total filas: {_parseResult.TotalRows} | " +
-                   $"🏢 Empresas: {_parseResult.UniqueCompanies} | " +
-                   $"👥 Empleados únicos: {uniqueEmployees} | " +
-                   $"❌ Errores: {errors.Count}";
-
-        lblEstadisticas.Text = stats;
-        lblEstadisticas.ForeColor = errors.Count > 0 ? Color.FromArgb(180, 60, 60) :
-                        Color.FromArgb(60, 140, 60);
+        RenderStatisticsBar(uniqueEmployees, errors.Count);
 
         foreach (var warning in warnings)
         {
@@ -1150,6 +1168,224 @@ public partial class MainForm : Form
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+    }
+
+    private void RenderStatisticsBar(int uniqueEmployees, int errorCount)
+    {
+        var accentColor = errorCount > 0
+            ? Color.FromArgb(180, 60, 60)
+            : Color.FromArgb(60, 140, 60);
+
+        lblEstadisticas.Visible = false;
+        pnlEstadisticas.Visible = true;
+        pnlEstadisticas.SuspendLayout();
+        pnlEstadisticas.Controls.Clear();
+
+        AddStatisticItem(StatisticVisual.Rows,
+            $"Total filas: {_parseResult!.TotalRows}", accentColor);
+        AddStatisticSeparator(accentColor);
+        AddStatisticItem(StatisticVisual.Companies,
+            $"Empresas: {_parseResult.UniqueCompanies}", accentColor);
+        AddStatisticSeparator(accentColor);
+        AddStatisticItem(StatisticVisual.Assignments,
+            $"Asignaciones: {_parseResult.UnicasAsignaciones}", accentColor);
+        AddStatisticSeparator(accentColor);
+        AddStatisticItem(StatisticVisual.Employees,
+            $"Empleados unicos: {uniqueEmployees}", accentColor);
+        AddStatisticSeparator(accentColor);
+        AddStatisticItem(errorCount > 0 ? StatisticVisual.ErrorsFail : StatisticVisual.ErrorsOk,
+            $"Errores: {errorCount}", accentColor);
+
+        pnlEstadisticas.ResumeLayout();
+    }
+
+    private void AddStatisticItem(StatisticVisual visual, string text, Color foreColor)
+    {
+        var itemPanel = new Panel
+        {
+            AutoSize = true,
+            Height = 24,
+            Margin = new Padding(0, 1, 0, 1),
+            Padding = Padding.Empty,
+            BackColor = Color.Transparent
+        };
+
+        var image = CreateStatisticIcon(visual);
+
+        var picture = new PictureBox
+        {
+            Size = new Size(18, 18),
+            Location = new Point(0, 3),
+            SizeMode = PictureBoxSizeMode.StretchImage,
+            Image = image,
+            BackColor = Color.Transparent
+        };
+        picture.Disposed += (_, _) => image.Dispose();
+
+        var label = new Label
+        {
+            AutoSize = true,
+            Location = new Point(24, 2),
+            Text = text,
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            ForeColor = foreColor,
+            BackColor = Color.Transparent
+        };
+
+        itemPanel.Controls.Add(picture);
+        itemPanel.Controls.Add(label);
+        itemPanel.Width = label.Right;
+
+        pnlEstadisticas.Controls.Add(itemPanel);
+    }
+
+    private static Bitmap CreateStatisticIcon(StatisticVisual visual)
+    {
+        var bitmap = new Bitmap(18, 18);
+
+        using var graphics = Graphics.FromImage(bitmap);
+        graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        graphics.Clear(Color.Transparent);
+
+        switch (visual)
+        {
+            case StatisticVisual.Rows:
+                DrawRowsIcon(graphics);
+                break;
+            case StatisticVisual.Companies:
+                DrawCompaniesIcon(graphics);
+                break;
+            case StatisticVisual.Assignments:
+                DrawAssignmentsIcon(graphics);
+                break;
+            case StatisticVisual.Employees:
+                DrawEmployeesIcon(graphics);
+                break;
+            case StatisticVisual.ErrorsOk:
+                DrawErrorStatusIcon(graphics, true);
+                break;
+            case StatisticVisual.ErrorsFail:
+                DrawErrorStatusIcon(graphics, false);
+                break;
+        }
+
+        return bitmap;
+    }
+
+    private static void DrawRowsIcon(Graphics graphics)
+    {
+        using var bodyBrush = new SolidBrush(Color.FromArgb(82, 139, 255));
+        using var foldBrush = new SolidBrush(Color.FromArgb(188, 214, 255));
+        using var linePen = new Pen(Color.White, 1.2f);
+
+        using var path = CreateRoundedRectanglePath(new RectangleF(2, 1, 12, 15), 2f);
+        graphics.FillPath(bodyBrush, path);
+        graphics.FillPolygon(foldBrush, new[]
+        {
+            new PointF(10, 1),
+            new PointF(14, 5),
+            new PointF(10, 5)
+        });
+        graphics.DrawLine(linePen, 4, 7, 12, 7);
+        graphics.DrawLine(linePen, 4, 10, 12, 10);
+        graphics.DrawLine(linePen, 4, 13, 10, 13);
+    }
+
+    private static void DrawCompaniesIcon(Graphics graphics)
+    {
+        using var buildingBrush = new SolidBrush(Color.FromArgb(37, 153, 124));
+        using var roofBrush = new SolidBrush(Color.FromArgb(80, 194, 164));
+        using var windowBrush = new SolidBrush(Color.FromArgb(220, 248, 241));
+
+        graphics.FillRectangle(buildingBrush, 3, 5, 11, 10);
+        graphics.FillRectangle(roofBrush, 5, 3, 7, 3);
+        graphics.FillRectangle(windowBrush, 5, 7, 2, 2);
+        graphics.FillRectangle(windowBrush, 9, 7, 2, 2);
+        graphics.FillRectangle(windowBrush, 5, 10, 2, 2);
+        graphics.FillRectangle(windowBrush, 9, 10, 2, 2);
+        graphics.FillRectangle(windowBrush, 7, 12, 3, 3);
+    }
+
+    private static void DrawAssignmentsIcon(Graphics graphics)
+    {
+        using var linePen = new Pen(Color.FromArgb(225, 145, 52), 2f);
+        using var leftBrush = new SolidBrush(Color.FromArgb(247, 191, 97));
+        using var rightBrush = new SolidBrush(Color.FromArgb(255, 119, 87));
+
+        graphics.DrawLine(linePen, 6, 6, 12, 12);
+        graphics.DrawLine(linePen, 6, 12, 12, 6);
+        graphics.FillEllipse(leftBrush, 2, 2, 6, 6);
+        graphics.FillEllipse(leftBrush, 2, 10, 6, 6);
+        graphics.FillEllipse(rightBrush, 10, 2, 6, 6);
+        graphics.FillEllipse(rightBrush, 10, 10, 6, 6);
+    }
+
+    private static void DrawEmployeesIcon(Graphics graphics)
+    {
+        using var bodyBrush = new SolidBrush(Color.FromArgb(58, 121, 255));
+        using var accentBrush = new SolidBrush(Color.FromArgb(121, 173, 255));
+
+        graphics.FillEllipse(accentBrush, 2, 3, 5, 5);
+        graphics.FillEllipse(bodyBrush, 7, 2, 6, 6);
+        graphics.FillEllipse(accentBrush, 11, 4, 5, 5);
+        graphics.FillPie(accentBrush, 1, 8, 7, 7, 200, 140);
+        graphics.FillPie(bodyBrush, 5, 8, 9, 8, 200, 140);
+        graphics.FillPie(accentBrush, 10, 8, 7, 7, 200, 140);
+    }
+
+    private static void DrawErrorStatusIcon(Graphics graphics, bool ok)
+    {
+        using var circleBrush = new SolidBrush(ok
+            ? Color.FromArgb(51, 171, 88)
+            : Color.FromArgb(214, 77, 77));
+        using var pen = new Pen(Color.White, 2f)
+        {
+            StartCap = LineCap.Round,
+            EndCap = LineCap.Round
+        };
+
+        graphics.FillEllipse(circleBrush, 1, 1, 16, 16);
+
+        if (ok)
+        {
+            graphics.DrawLine(pen, 5, 9, 8, 12);
+            graphics.DrawLine(pen, 8, 12, 13, 6);
+        }
+        else
+        {
+            graphics.DrawLine(pen, 5, 5, 13, 13);
+            graphics.DrawLine(pen, 13, 5, 5, 13);
+        }
+    }
+
+    private static GraphicsPath CreateRoundedRectanglePath(RectangleF rectangle, float radius)
+    {
+        var diameter = radius * 2;
+        var path = new GraphicsPath();
+
+        path.AddArc(rectangle.X, rectangle.Y, diameter, diameter, 180, 90);
+        path.AddArc(rectangle.Right - diameter, rectangle.Y, diameter, diameter, 270, 90);
+        path.AddArc(rectangle.Right - diameter, rectangle.Bottom - diameter, diameter, diameter, 0, 90);
+        path.AddArc(rectangle.X, rectangle.Bottom - diameter, diameter, diameter, 90, 90);
+        path.CloseFigure();
+
+        return path;
+    }
+
+    private void AddStatisticSeparator(Color foreColor)
+    {
+        var separator = new Label
+        {
+            AutoSize = true,
+            Margin = new Padding(8, 2, 8, 0),
+            Text = "|",
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            ForeColor = foreColor,
+            BackColor = Color.Transparent
+        };
+
+        pnlEstadisticas.Controls.Add(separator);
     }
 
     private async void BtnCorregirErrores_Click(object? sender, EventArgs e)
