@@ -81,38 +81,9 @@ public sealed class BulkCuitOnlineLookupForm : Form
                 UserDataFolder = AppPaths.WebView2UserDataDirectory
             };
             await _webView.EnsureCoreWebView2Async();
-            
-            var jsSessionSync = @"
-                (function() {
-                    try {
-                        for (var i = 0; i < localStorage.length; i++) {
-                            var k = localStorage.key(i);
-                            if (k && k.indexOf('ss_backup_') === 0) {
-                                var origKey = k.substring(10);
-                                if (!sessionStorage.getItem(origKey)) {
-                                    sessionStorage.setItem(origKey, localStorage.getItem(k));
-                                }
-                            }
-                        }
-                        setInterval(function() {
-                            for (var i = 0; i < sessionStorage.length; i++) {
-                                var k = sessionStorage.key(i);
-                                if (k) localStorage.setItem('ss_backup_' + k, sessionStorage.getItem(k) || '');
-                            }
-                            for (var i = localStorage.length - 1; i >= 0; i--) {
-                                var k = localStorage.key(i);
-                                if (k && k.indexOf('ss_backup_') === 0) {
-                                    var origKey = k.substring(10);
-                                    if (!sessionStorage.getItem(origKey)) {
-                                        localStorage.removeItem(k);
-                                    }
-                                }
-                            }
-                        }, 500);
-                    } catch(e) {}
-                })();
-            ";
-            await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(jsSessionSync);
+
+            _webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+            _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
 
             _webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
             _webView.Source = new Uri("https://lasegundaart-ml.conexia.com.ar/tray");

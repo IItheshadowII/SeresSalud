@@ -8,6 +8,10 @@ public sealed class UpdateInfo
     public required string InstallerUrl { get; init; }
     public string? InstallerApiUrl { get; init; }
     public required string ReleaseUrl { get; init; }
+    /// <summary>URL pública (browser_download_url) del archivo .sha256 del instalador.</summary>
+    public string? InstallerHashUrl { get; init; }
+    /// <summary>URL de la API de GitHub del archivo .sha256 (para repos privados).</summary>
+    public string? InstallerHashApiUrl { get; init; }
 }
 
 public sealed class UpdateState

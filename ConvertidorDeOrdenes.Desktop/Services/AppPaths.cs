@@ -24,6 +24,7 @@ public static class AppPaths
     public static string LogsDirectory => Path.Combine(DataRootDirectory, "logs");
     public static string WebView2UserDataDirectory => Path.Combine(DataRootDirectory, "WebView2");
     public static string PortalLoginStatePath => Path.Combine(DataRootDirectory, "portal_login_state.json");
+    public static string PortalUsernamePath => Path.Combine(DataRootDirectory, "portal_username.dat");
     public static string PortalPasswordPath => Path.Combine(DataRootDirectory, "portal_password.dat");
     public static string UpdateStatePath => Path.Combine(DataRootDirectory, "update_state.json");
     public static string UpdateTokenPath => Path.Combine(DataRootDirectory, "github_token.dat");

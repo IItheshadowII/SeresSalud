@@ -586,14 +586,13 @@ public partial class MainForm : Form
             UseWaitCursor = true;
             Enabled = false;
 
-            var installerPath = await _updateService.DownloadInstallerAsync(update, progress: null, cts.Token);
+            var (installerPath, downloadError) = await _updateService.DownloadInstallerAsync(update, progress: null, cts.Token);
             if (string.IsNullOrWhiteSpace(installerPath) || !File.Exists(installerPath))
             {
-                MessageBox.Show(
-                    "No se pudo descargar el instalador.\n\nPuede descargarlo manualmente desde la página de Releases.",
-                    "Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                var msg = string.IsNullOrWhiteSpace(downloadError)
+                    ? "No se pudo descargar el instalador.\n\nPuede descargarlo manualmente desde la página de Releases."
+                    : $"No se pudo descargar el instalador.\n\n{downloadError}\n\nPuede descargarlo manualmente desde la página de Releases.";
+                MessageBox.Show(msg, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 

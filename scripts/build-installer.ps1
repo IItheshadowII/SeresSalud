@@ -69,4 +69,11 @@ if (-not (Test-Path $expectedInstaller)) {
   throw "Fallo al generar el instalador (archivo faltante): $expectedInstaller"
 }
 
+# Generar archivo SHA-256 para verificación de integridad en el proceso de actualización.
+$hashFile = $expectedInstaller + '.sha256'
+$hash = (Get-FileHash -Path $expectedInstaller -Algorithm SHA256).Hash.ToLower()
+# Formato "<hash>  <nombre_archivo>" (compatible con sha256sum de Linux)
+Set-Content -Path $hashFile -Value "$hash  $($outputBaseFilename).exe" -Encoding ASCII -NoNewline
+Write-Host "OK. SHA-256 generado en: $hashFile" -ForegroundColor Green
+
 Write-Host "OK. El instalador queda en la carpeta Installer (OutputBaseFilename)." -ForegroundColor Green

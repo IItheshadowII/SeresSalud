@@ -55,12 +55,16 @@ public sealed class UpdateService
         if (asset?.browser_download_url == null)
             return null;
 
+        var hashAsset = SelectHashAsset(release, asset.name);
+
         return new UpdateInfo
         {
             Version = latest,
             InstallerUrl = asset.browser_download_url,
             InstallerApiUrl = asset.url,
-            ReleaseUrl = release.html_url ?? $"https://github.com/{Owner}/{Repo}/releases"
+            ReleaseUrl = release.html_url ?? $"https://github.com/{Owner}/{Repo}/releases",
+            InstallerHashUrl = hashAsset?.browser_download_url,
+            InstallerHashApiUrl = hashAsset?.url,
         };
     }
 
@@ -80,7 +84,7 @@ public sealed class UpdateService
         _stateStore.Save(state);
     }
 
-    public async Task<string?> DownloadInstallerAsync(UpdateInfo update, IProgress<(long received, long? total)>? progress, CancellationToken ct)
+    public async Task<(string? path, string? error)> DownloadInstallerAsync(UpdateInfo update, IProgress<(long received, long? total)>? progress, CancellationToken ct)
     {
         var token = GetGitHubToken();
 
@@ -106,29 +110,84 @@ public sealed class UpdateService
 
         using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
         if (!response.IsSuccessStatusCode)
-            return null;
+            return (null, $"El servidor devolvió {(int)response.StatusCode} al descargar el instalador.");
 
         var tempPath = Path.Combine(Path.GetTempPath(), $"ConvertidorDeOrdenes-Setup-{update.Version}.exe");
 
         await using var input = await response.Content.ReadAsStreamAsync(ct);
-        await using var output = File.Create(tempPath);
-
-        var buffer = new byte[81920];
-        long received = 0;
-        var total = response.Content.Headers.ContentLength;
-
-        while (true)
+        await using (var output = File.Create(tempPath))
         {
-            var read = await input.ReadAsync(buffer, ct);
-            if (read <= 0)
-                break;
+            var buffer = new byte[81920];
+            long received = 0;
+            var total = response.Content.Headers.ContentLength;
 
-            await output.WriteAsync(buffer.AsMemory(0, read), ct);
-            received += read;
-            progress?.Report((received, total));
+            while (true)
+            {
+                var read = await input.ReadAsync(buffer, ct);
+                if (read <= 0)
+                    break;
+
+                await output.WriteAsync(buffer.AsMemory(0, read), ct);
+                received += read;
+                progress?.Report((received, total));
+            }
         }
 
-        return tempPath;
+        // Verificar integridad SHA-256 si hay un asset de hash disponible.
+        var hashUrl = (!string.IsNullOrWhiteSpace(token) && !string.IsNullOrWhiteSpace(update.InstallerHashApiUrl))
+            ? update.InstallerHashApiUrl
+            : update.InstallerHashUrl;
+
+        if (!string.IsNullOrWhiteSpace(hashUrl))
+        {
+            var verifyError = await VerifyInstallerHashAsync(tempPath, hashUrl, token, ct);
+            if (verifyError != null)
+            {
+                try { File.Delete(tempPath); } catch { }
+                return (null, verifyError);
+            }
+        }
+
+        return (tempPath, null);
+    }
+
+    private async Task<string?> VerifyInstallerHashAsync(string installerPath, string hashUrl, string? token, CancellationToken ct)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, hashUrl);
+            req.Headers.UserAgent.Add(new ProductInfoHeaderValue("ConvertidorDeOrdenes", "1.0"));
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
+            }
+
+            using var resp = await _http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode)
+                return $"No se pudo descargar el archivo de verificación de integridad (HTTP {(int)resp.StatusCode}).";
+
+            var hashFileContent = (await resp.Content.ReadAsStringAsync(ct)).Trim();
+            // Formato: "<hex>  <filename>" o simplemente "<hex>"
+            var expectedHex = hashFileContent.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries)[0].ToLowerInvariant();
+
+            if (expectedHex.Length != 64)
+                return "El archivo de verificación de integridad tiene un formato inesperado.";
+
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            await using var fileStream = File.OpenRead(installerPath);
+            var hashBytes = await sha.ComputeHashAsync(fileStream, ct);
+            var actualHex = Convert.ToHexString(hashBytes).ToLowerInvariant();
+
+            if (!string.Equals(actualHex, expectedHex, StringComparison.Ordinal))
+                return "La verificación de integridad del instalador falló. El archivo puede estar corrupto o fue alterado.";
+
+            return null; // OK
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return $"Error al verificar la integridad del instalador: {ex.Message}";
+        }
     }
 
     public bool RunInstallerAndExit(string installerPath)
@@ -176,14 +235,26 @@ public sealed class UpdateService
         return fallback;
     }
 
+    private static GitHubAssetDto? SelectHashAsset(GitHubReleaseDto release, string? installerName)
+    {
+        var assets = release.assets;
+        if (assets == null || assets.Count == 0 || string.IsNullOrWhiteSpace(installerName))
+            return null;
+
+        // Buscar el archivo "<nombre_instalador>.sha256"
+        var expected = installerName + ".sha256";
+        return assets.FirstOrDefault(a => string.Equals(a.name, expected, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static string? GetGitHubToken()
     {
         var stored = GitHubTokenStore.TryLoad(AppPaths.UpdateTokenPath);
         if (!string.IsNullOrWhiteSpace(stored))
             return stored;
 
-        // Fallback: variables de entorno para PCs corporativas.
-        return Environment.GetEnvironmentVariable("SERESSALUD_GITHUB_TOKEN")
-            ?? Environment.GetEnvironmentVariable("GITHUB_TOKEN");
+        // Fallback: variable de entorno específica de la aplicación.
+        // No se usa GITHUB_TOKEN genérico para evitar que tokens de CI/CD con permisos
+        // amplios sean consumidos involuntariamente por la app de escritorio.
+        return Environment.GetEnvironmentVariable("SERESSALUD_GITHUB_TOKEN");
     }
 }

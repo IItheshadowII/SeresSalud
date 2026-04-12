@@ -18,17 +18,14 @@ namespace ConvertidorDeOrdenes.Desktop.Forms;
 public sealed class CuitOnlineLookupForm : Form
 {
     private readonly string _contractNumber;
-    private readonly PortalLoginStateStore _portalLoginStateStore = new(AppPaths.PortalLoginStatePath);
 
     private readonly WebView2 _webView = new();
     private readonly Button _btnExtraerCuit = new();
     private readonly Label _lblInfo = new();
     private string _rememberedUsername = string.Empty;
     private string _rememberedPassword = string.Empty;
+    private bool _shouldSaveCredentials;
     private int _loginAttempts;
-    // Credenciales capturadas del formulario justo antes del submit.
-    private string _pendingUsername = string.Empty;
-    private string _pendingPassword = string.Empty;
     private bool _wasOnLogin;
 
     /// <summary>
@@ -89,8 +86,19 @@ public sealed class CuitOnlineLookupForm : Form
         Controls.Add(_webView);
         Controls.Add(headerPanel);
 
-        _rememberedUsername = _portalLoginStateStore.Load().RememberedUsername?.Trim() ?? string.Empty;
-    _rememberedPassword = PortalPasswordStore.TryLoad(AppPaths.PortalPasswordPath) ?? string.Empty;
+        // Cargar credenciales: intentar almacén DPAPI nuevo, con migración desde JSON legacy.
+        _rememberedUsername = PortalUsernameStore.TryLoad(AppPaths.PortalUsernamePath) ?? string.Empty;
+        if (string.IsNullOrEmpty(_rememberedUsername))
+        {
+            var legacyState = new PortalLoginStateStore(AppPaths.PortalLoginStatePath).Load();
+            if (!string.IsNullOrEmpty(legacyState.RememberedUsername))
+            {
+                _rememberedUsername = legacyState.RememberedUsername.Trim();
+                PortalUsernameStore.TrySave(AppPaths.PortalUsernamePath, _rememberedUsername);
+                try { File.Delete(AppPaths.PortalLoginStatePath); } catch { }
+            }
+        }
+        _rememberedPassword = PortalPasswordStore.TryLoad(AppPaths.PortalPasswordPath) ?? string.Empty;
 
         try
         {
@@ -103,44 +111,12 @@ public sealed class CuitOnlineLookupForm : Form
             };
 
             await _webView.EnsureCoreWebView2Async();
-            var jsSessionSync = @"
-                (function() {
-                    try {
-                        for (var i = 0; i < localStorage.length; i++) {
-                            var k = localStorage.key(i);
-                            if (k && k.indexOf('ss_backup_') === 0) {
-                                var origKey = k.substring(10);
-                                if (!sessionStorage.getItem(origKey)) {
-                                    sessionStorage.setItem(origKey, localStorage.getItem(k));
-                                }
-                            }
-                        }
-                        setInterval(function() {
-                            for (var i = 0; i < sessionStorage.length; i++) {
-                                var k = sessionStorage.key(i);
-                                if (k) localStorage.setItem('ss_backup_' + k, sessionStorage.getItem(k) || '');
-                            }
-                            for (var i = localStorage.length - 1; i >= 0; i--) {
-                                var k = localStorage.key(i);
-                                if (k && k.indexOf('ss_backup_') === 0) {
-                                    var origKey = k.substring(10);
-                                    if (!sessionStorage.getItem(origKey)) {
-                                        localStorage.removeItem(k);
-                                    }
-                                }
-                            }
-                        }, 500);
-                    } catch(e) {}
-                })();
-            ";
-            await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(jsSessionSync);
 
-            _webView.CoreWebView2.Settings.IsStatusBarEnabled = true;
-            _webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
+            _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+            _webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
 
             _webView.CoreWebView2.NavigationCompleted += CoreWebView2OnNavigationCompleted;
             _webView.CoreWebView2.SourceChanged += CoreWebView2OnSourceChanged;
-            _webView.CoreWebView2.WebMessageReceived += CoreWebView2OnWebMessageReceived;
 
             // Intentar ir directo a /tray; si no hay sesión, el servidor redirigirá a /login.
             _webView.Source = new Uri("https://lasegundaart-ml.conexia.com.ar/tray");
@@ -181,11 +157,11 @@ public sealed class CuitOnlineLookupForm : Form
         {
             await PersistSessionCookiesAsync();
 
-            if (!string.IsNullOrWhiteSpace(_pendingUsername) && !string.IsNullOrWhiteSpace(_pendingPassword))
+            if (_shouldSaveCredentials &&
+                !string.IsNullOrWhiteSpace(_rememberedUsername) &&
+                !string.IsNullOrWhiteSpace(_rememberedPassword))
             {
-                _rememberedUsername = _pendingUsername;
-                _rememberedPassword = _pendingPassword;
-                _portalLoginStateStore.Save(new PortalLoginState { RememberedUsername = _rememberedUsername });
+                PortalUsernameStore.TrySave(AppPaths.PortalUsernamePath, _rememberedUsername);
                 PortalPasswordStore.TrySave(AppPaths.PortalPasswordPath, _rememberedPassword);
             }
         }
@@ -196,15 +172,30 @@ public sealed class CuitOnlineLookupForm : Form
         if (isLogin && _loginAttempts < 2)
         {
             _loginAttempts++;
-            await InjectLoginHooksAsync();
-            await TryAutoLoginAsync();
-            return;
-        }
 
-        if (isLogin)
-        {
-            await InjectLoginHooksAsync();
+            // Si no hay credenciales o es un reintento (primer intento falló), pedir al usuario.
+            if (string.IsNullOrWhiteSpace(_rememberedUsername) ||
+                string.IsNullOrWhiteSpace(_rememberedPassword) ||
+                _loginAttempts > 1)
+            {
+                AskCredentials();
+                if (string.IsNullOrWhiteSpace(_rememberedUsername) || string.IsNullOrWhiteSpace(_rememberedPassword))
+                    return; // El usuario canceló el diálogo.
+            }
+
+            await TryAutoLoginAsync();
         }
+    }
+
+    private void AskCredentials()
+    {
+        using var dlg = new PortalCredentialDialog(_rememberedUsername);
+        if (dlg.ShowDialog(this) != DialogResult.OK)
+            return;
+
+        _rememberedUsername = dlg.Username;
+        _rememberedPassword = dlg.Password;
+        _shouldSaveCredentials = dlg.RememberCredentials;
     }
 
     private async void BtnExtraerCuit_Click(object? sender, EventArgs e)
@@ -279,82 +270,6 @@ public sealed class CuitOnlineLookupForm : Form
         catch
         {
             // Si el login automático falla, el usuario aún puede loguearse manualmente.
-        }
-    }
-
-    /// <summary>
-    /// Inyecta hooks en el formulario de login para capturar credenciales al hacer submit.
-    /// </summary>
-    private async Task InjectLoginHooksAsync()
-    {
-        try
-        {
-            if (_webView.CoreWebView2 == null)
-                return;
-
-            // Hook: captura username/password en CADA click del botón e input,
-            // y los envía a C# via postMessage. Usa capturing phase para ejecutar
-            // antes que Angular procese el click.
-            var js =
-                "(function() {" +
-                "  if (window.__copilotLoginHooked) return 'already';" +
-                "  window.__copilotLoginHooked = true;" +
-                // Función que lee los campos actuales y envía a C#.
-                "  function sendCreds() {" +
-                "    try {" +
-                "      var u = document.querySelector('input[type=email],input[name*=\"user\"],input[name*=\"Usuario\"],input[name*=\"usuario\"],input[type=text]');" +
-                "      var p = document.querySelector('input[type=password]');" +
-                "      if (!u || !p) return;" +
-                "      var payload = JSON.stringify({ type: 'login-creds', username: u.value || '', password: p.value || '' });" +
-                "      window.chrome.webview.postMessage(payload);" +
-                "    } catch(e) {}" +
-                "  }" +
-                // Capturar en cada cambio para tener siempre el último valor.
-                "  document.addEventListener('input', sendCreds, true);" +
-                "  document.addEventListener('change', sendCreds, true);" +
-                // Capturar justo antes del click del botón (capturing phase).
-                "  document.addEventListener('click', function(ev) {" +
-                "    var btn = ev.target.closest('button,input[type=submit]');" +
-                "    if (btn) sendCreds();" +
-                "  }, true);" +
-                // También en submit del form.
-                "  document.addEventListener('submit', sendCreds, true);" +
-                "  return 'hooked';" +
-                "})();";
-
-            await _webView.CoreWebView2.ExecuteScriptAsync(js);
-        }
-        catch
-        {
-            // Si falla la inyección, el login manual sigue funcionando.
-        }
-    }
-
-    private void CoreWebView2OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
-    {
-        try
-        {
-            var payload = e.TryGetWebMessageAsString();
-            if (string.IsNullOrWhiteSpace(payload))
-                return;
-
-            var message = JsonSerializer.Deserialize<PortalLoginWebMessage>(payload);
-            if (!string.Equals(message?.Type, "login-creds", StringComparison.OrdinalIgnoreCase))
-                return;
-
-            var username = message?.Username?.Trim() ?? string.Empty;
-            var password = message?.Password ?? string.Empty;
-
-            // Guardar como pendientes; se persisten cuando el login es exitoso
-            // (navegación de /login a otra URL).
-            if (!string.IsNullOrWhiteSpace(username))
-                _pendingUsername = username;
-            if (!string.IsNullOrWhiteSpace(password))
-                _pendingPassword = password;
-        }
-        catch
-        {
-            // Ignorar mensajes inválidos del DOM.
         }
     }
 
@@ -500,15 +415,14 @@ public sealed class CuitOnlineLookupForm : Form
             .Replace("\\", "\\\\")
             .Replace("'", "\\'")
             .Replace("\"", "\\\"")
-            .Replace("\r", " ")
-            .Replace("\n", " ");
-    }
-
-    private sealed class PortalLoginWebMessage
-    {
-        public string Type { get; set; } = string.Empty;
-        public string Username { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
+            .Replace("\0", "\\0")
+            .Replace("\b", "\\b")
+            .Replace("\f", "\\f")
+            .Replace("\t", "\\t")
+            .Replace("\r", "\\r")
+            .Replace("\n", "\\n")
+            .Replace("\u2028", "\\u2028")
+            .Replace("\u2029", "\\u2029");
     }
 }
 
