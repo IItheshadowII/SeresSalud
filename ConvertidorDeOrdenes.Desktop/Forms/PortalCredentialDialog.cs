@@ -132,7 +132,7 @@ internal sealed class PortalCredentialDialog : Form
             return;
         }
 
-        if (string.IsNullOrEmpty(Password))
+        if (string.IsNullOrWhiteSpace(Password))
         {
             MessageBox.Show("Ingresá la contraseña.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             _txtPassword.Focus();

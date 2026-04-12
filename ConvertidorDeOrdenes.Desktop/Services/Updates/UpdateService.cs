@@ -171,7 +171,7 @@ public sealed class UpdateService
             // Formato: "<hex>  <filename>" o simplemente "<hex>"
             var expectedHex = hashFileContent.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries)[0].ToLowerInvariant();
 
-            if (expectedHex.Length != 64)
+            if (expectedHex.Length != 64 || !System.Text.RegularExpressions.Regex.IsMatch(expectedHex, "^[0-9a-f]{64}$"))
                 return "El archivo de verificación de integridad tiene un formato inesperado.";
 
             using var sha = System.Security.Cryptography.SHA256.Create();

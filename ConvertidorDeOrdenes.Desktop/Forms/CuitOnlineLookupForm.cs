@@ -91,9 +91,11 @@ public sealed class CuitOnlineLookupForm : Form
         if (string.IsNullOrEmpty(_rememberedUsername))
         {
             var legacyState = new PortalLoginStateStore(AppPaths.PortalLoginStatePath).Load();
-            if (!string.IsNullOrEmpty(legacyState.RememberedUsername))
+            var legacyUsername = legacyState.RememberedUsername?.Trim() ?? string.Empty;
+            // Solo migrar si el nombre de usuario parece válido (no vacío y sin caracteres de control).
+            if (!string.IsNullOrEmpty(legacyUsername) && !legacyUsername.Any(char.IsControl))
             {
-                _rememberedUsername = legacyState.RememberedUsername.Trim();
+                _rememberedUsername = legacyUsername;
                 PortalUsernameStore.TrySave(AppPaths.PortalUsernamePath, _rememberedUsername);
                 try { File.Delete(AppPaths.PortalLoginStatePath); } catch { }
             }
