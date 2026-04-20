@@ -27,6 +27,13 @@ public class CsvOrderParser
                 return result;
             }
 
+            var expectedColumnCount = GetExpectedColumnCount(rawLines);
+
+            for (int i = 0; i < rawLines.Length; i++)
+            {
+                rawLines[i] = NormalizeCsvLineIfDoubleQuoted(rawLines[i], expectedColumnCount);
+            }
+
             // Detectar delimitador más probable
             char detectedDelimiter = DetectDelimiter(rawLines.Take(10).ToArray());
 
@@ -299,8 +306,16 @@ public class CsvOrderParser
     {
         if (line == null) yield break;
 
+        var cells = ParseCsvFields(line, delimiter);
+
+        foreach (var cell in cells)
+            yield return cell;
+    }
+
+    private static List<string> ParseCsvFields(string line, char delimiter)
+    {
         var cells = new List<string>();
-        var cur = new System.Text.StringBuilder();
+        var cur = new StringBuilder();
         bool inQuotes = false;
 
         for (int i = 0; i < line.Length; i++)
@@ -308,11 +323,10 @@ public class CsvOrderParser
             var c = line[i];
             if (c == '"')
             {
-                // Double quote escape
                 if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
                 {
                     cur.Append('"');
-                    i++; // skip next
+                    i++;
                 }
                 else
                 {
@@ -321,7 +335,7 @@ public class CsvOrderParser
             }
             else if (c == delimiter && !inQuotes)
             {
-                cells.Add(cur.ToString());
+                cells.Add(cur.ToString().Trim());
                 cur.Clear();
             }
             else
@@ -330,10 +344,69 @@ public class CsvOrderParser
             }
         }
 
-        cells.Add(cur.ToString());
+        cells.Add(cur.ToString().Trim());
+        return cells;
+    }
 
-        foreach (var cell in cells)
-            yield return cell.Trim().Trim('"');
+    public static string CsvEscape(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+
+        var mustQuote = value.Contains(',') || value.Contains('"') || value.Contains('\r') || value.Contains('\n');
+        if (!mustQuote)
+            return value;
+
+        return $"\"{value.Replace("\"", "\"\"")}\"";
+    }
+
+    public static string NormalizeCsvLineIfDoubleQuoted(string? line, int? expectedColumnCount = null, char delimiter = ',')
+    {
+        if (string.IsNullOrWhiteSpace(line))
+            return line ?? string.Empty;
+
+        var trimmed = line.Trim();
+        if (trimmed.Length < 2 || trimmed[0] != '"' || trimmed[^1] != '"')
+            return line;
+
+        if (!trimmed.Contains(delimiter) || !trimmed.Contains("\"\""))
+            return line;
+
+        var originalColumns = ParseCsvFields(trimmed, delimiter);
+        if (originalColumns.Count > 1)
+            return line;
+
+        var unwrapped = trimmed.Substring(1, trimmed.Length - 2).Replace("\"\"", "\"");
+        var normalizedColumns = ParseCsvFields(unwrapped, delimiter);
+
+        if (normalizedColumns.Count <= 1)
+            return line;
+
+        if (expectedColumnCount.HasValue)
+        {
+            var originalDistance = Math.Abs(originalColumns.Count - expectedColumnCount.Value);
+            var normalizedDistance = Math.Abs(normalizedColumns.Count - expectedColumnCount.Value);
+            if (normalizedDistance > originalDistance)
+                return line;
+        }
+
+        return unwrapped;
+    }
+
+    private static int? GetExpectedColumnCount(string[] rawLines)
+    {
+        foreach (var line in rawLines)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            var normalized = NormalizeCsvLineIfDoubleQuoted(line, null);
+            var count = ParseCsvFields(normalized, ',').Count;
+            if (count > 1)
+                return count;
+        }
+
+        return null;
     }
 
     private string GetField(CsvReader csv, Dictionary<string, int> normalizedMap, params string[] candidates)
