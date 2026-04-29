@@ -154,32 +154,40 @@ dotnet publish ConvertidorDeOrdenes.Desktop\ConvertidorDeOrdenes.Desktop.csproj 
 
 ### Auto-update (in-app)
 
-La app se actualiza consultando **GitHub Releases** y ejecutando el **instalador** de la versión más nueva.
+La app no aplica parches internos. El mecanismo actual busca la última release en **GitHub Releases**, descarga el **instalador** y luego lo ejecuta para completar la actualización.
 
 Cómo funciona:
 
-1) Al iniciar, hace un chequeo automático (máximo **1 vez cada 24 hs**).
-2) Consulta `https://api.github.com/repos/IItheshadowII/SeresSalud/releases/latest`.
-3) Lee `tag_name` (ej: `v1.0.15`) y lo compara con la versión local.
-4) Si hay update, muestra un diálogo de confirmación.
-5) Si aceptás, descarga el instalador a la carpeta temporal:
-    - `%TEMP%\ConvertidorDeOrdenes-Setup-<version>.exe`
-6) Ejecuta el instalador y **cierra la aplicación** para completar la actualización.
+1. Al mostrarse la ventana principal, hace un chequeo automático como máximo **1 vez cada 24 hs**.
+2. También se puede lanzar manualmente desde **Ayuda → Buscar actualizaciones...**.
+3. Consulta la API de GitHub en `https://api.github.com/repos/IItheshadowII/SeresSalud/releases/latest`.
+4. Toma `tag_name` del release, elimina el prefijo `v` si existe, y lo compara con la versión local de la app.
+5. Si la release es más nueva, busca primero el asset exacto **ConvertidorDeOrdenes-Setup.exe**.
+6. Si ese nombre exacto no existe, usa como fallback cualquier `.exe` que contenga `setup` en el nombre.
+7. Antes de mostrar el aviso, guarda en estado local la fecha/hora del último chequeo.
+8. Si ya se avisó antes por esa misma versión, el chequeo automático no vuelve a insistir.
+9. Si aceptás la actualización, descarga el instalador a la carpeta temporal:
+     - `%TEMP%\ConvertidorDeOrdenes-Setup-<version>.exe`
+10. Luego ejecuta ese instalador con `UseShellExecute = true` y la app se cierra para completar la instalación.
 
 Notas:
-- La notificación se “recuerda” para no insistir con la misma versión.
-- El estado del updater se guarda en `%LOCALAPPDATA%\Seres Salud\ConvertidorDeOrdenes\update_state.json`.
-- Los datos del usuario (base de empresas, logs, etc.) se guardan en `%LOCALAPPDATA%...`, así que los updates no deberían borrarlos.
-- Si la descarga/ejecución falla, se puede instalar manualmente bajando **ConvertidorDeOrdenes-Setup.exe** desde la página de Releases.
+- El updater guarda dos datos en `%LOCALAPPDATA%\Seres Salud\ConvertidorDeOrdenes\update_state.json`:
+    - `LastCheckedUtc`: último chequeo realizado.
+    - `LastNotifiedVersion`: última versión por la que ya se mostró aviso.
+- Los datos del usuario viven en `%LOCALAPPDATA%\Seres Salud\ConvertidorDeOrdenes\...`, por lo que actualizar mediante instalador no debería borrar base de empresas, logs ni estados locales.
+- El chequeo automático usa un timeout corto de red de aproximadamente 15 segundos.
+- Si no hay update y el chequeo fue manual, la app muestra `No hay actualizaciones disponibles.`.
+- Si la descarga o ejecución automática falla, puede instalarse manualmente desde la página de Releases.
 
-Chequeo manual:
-- Menú **Ayuda → Buscar actualizaciones...** (muestra “No hay actualizaciones disponibles” si ya estás al día).
+Autenticación / repos privados:
+- El código soporta token de GitHub para descargar releases privadas.
+- El updater intenta leer primero un token almacenado localmente y, si no existe, usa las variables de entorno `SERESSALUD_GITHUB_TOKEN` o `GITHUB_TOKEN`.
+- Actualmente la UI para cargar o borrar ese token está deshabilitada en la aplicación, así que hoy el mecanismo operativo documentado es vía variables de entorno.
 
 Requisitos para que funcione:
-- Los releases deben estar tageados como `vX.Y.Z`.
-- El release debe incluir un asset instalador. Se prioriza el nombre exacto: **ConvertidorDeOrdenes-Setup.exe**.
-- Si el repo es privado o el entorno corporativo bloquea GitHub, configurar un token:
-    - Variable de entorno `SERESSALUD_GITHUB_TOKEN` (o `GITHUB_TOKEN`) con permisos para leer releases.
+- Los releases deben estar tageados como `vX.Y.Z` para que la comparación de versiones funcione correctamente.
+- Debe existir un asset instalador. Se prioriza el nombre exacto **ConvertidorDeOrdenes-Setup.exe**.
+- Si el repo fuera privado, el token debe tener permiso de lectura sobre releases del repositorio.
 
 ### Release con 1 comando (local)
 
@@ -428,7 +436,7 @@ ConvertidorDeOrdenes/
 |-----|-------|-----|-------------|------------------|
 | **A** | CuitEmpleador | ✅ | CUIT del empleador | Validación de longitud (11 dígitos numéricos) |
 | **B** | CIIU | ❌ | Código CIIU de actividad | - |
-| **C** | Empleador | ✅ | Razón social | Limpieza de formato "NRO - NOMBRE" |
+| **C** | Empleador | ✅ | Razón social | En CSV toma la columna "Razón social" |
 | **D** | Calle | ❌ | Domicilio | - |
 | **E** | CodPostal | ❌ | Código postal | ⚠️ Siempre vacío en salida |
 | **F** | Localidad | ✅ | Localidad normalizada | Limpieza CP, sufijos provincia |
@@ -437,7 +445,7 @@ ConvertidorDeOrdenes/
 | **I** | Telefono | ❌ | Teléfono de contacto | - |
 | **J** | Fax | ❌ | Número de fax | - |
 | **K** | Contrato | ❌ | Número de contrato | - |
-| **L** | NroEstablecimiento | ❌ | N° de establecimiento | Extracción desde "NRO - NOMBRE" |
+| **L** | NroEstablecimiento | ❌ | N° de establecimiento | Columna dedicada y fallback desde "Nombre establecimiento" si trae prefijo numérico |
 | **M** | Frecuencia | ✅ | A/S/R (Anual/Semestral/Reconf) | Del wizard |
 | **N** | Cuil | ✅ | CUIL del trabajador | Validación de longitud (11 dígitos numéricos) |
 | **O** | NroDocumento | ❌ | Número de documento | ⚠️ Siempre vacío en salida |
@@ -485,6 +493,10 @@ ACIDO T-T-MUCONICO EN ORINA,ACIDO TT MUCONICO EN ORINA
 ```
 
 ### 2. Empleador y Establecimiento
+
+En archivos CSV de Reconfirmatorios/Reevaluaciones:
+- `Empleador` sale de la columna `Razón social`.
+- `Nombre establecimiento` no se usa como razón social; solo aporta al establecimiento cuando incluye un prefijo del tipo `NRO - NOMBRE`.
 
 **Separación de número y nombre:**
 ```

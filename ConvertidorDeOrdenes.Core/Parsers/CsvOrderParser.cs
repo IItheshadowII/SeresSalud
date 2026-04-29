@@ -85,10 +85,11 @@ public class CsvOrderParser
 
                         row.Contrato = GetField(fields, columnMap, "Contrato");
                         row.CuitEmpleador = GetField(fields, columnMap, "CUIT");
+                        row.Empleador = GetField(fields, columnMap, "Razón social", "Razon social", "Empleador", "Empresa");
                         var nroEstablecimiento = GetField(fields, columnMap, "Nro. Establecimiento", "Nro Establecimiento", "Establecimiento");
                         var nombreEstablecimiento = GetField(fields, columnMap, "Nombre establecimiento", "Nombre Establecimiento", "Establecimiento");
-                        ProcessEmpleador(nombreEstablecimiento, ref row);
-                        if (string.IsNullOrWhiteSpace(row.NroEstablecimiento)) row.NroEstablecimiento = nroEstablecimiento;
+                        row.NroEstablecimiento = nroEstablecimiento;
+                        ProcessEstablecimiento(nombreEstablecimiento, ref row);
                         row.Telefono = GetField(fields, columnMap, "Teléfono", "Telefono", "Teléfono / Celular", "Telefono / Celular");
                         row.Cuil = GetField(fields, columnMap, "CUIL");
                         row.TrabajadorApellidoNombre = GetField(fields, columnMap, "Nombre Beneficiario", "Beneficiario", "Apellido y Nombre", "Nombre y Apellido");
@@ -132,18 +133,13 @@ public class CsvOrderParser
                     // Extraer datos del CSV
                     row.Contrato = GetField(csv, columnMap2, "Contrato");
                     row.CuitEmpleador = GetField(csv, columnMap2, "CUIT");
+                    row.Empleador = GetField(csv, columnMap2, "Razón social", "Razon social", "Empleador", "Empresa");
 
-                    var nroEstablecimiento = GetField(csv, columnMap2, "Nro. Establecimiento");
-                    var nombreEstablecimiento = GetField(csv, columnMap2, "Nombre establecimiento");
+                    var nroEstablecimiento = GetField(csv, columnMap2, "Nro. Establecimiento", "Nro Establecimiento", "Establecimiento");
+                    var nombreEstablecimiento = GetField(csv, columnMap2, "Nombre establecimiento", "Nombre Establecimiento", "Establecimiento");
 
-                    // Procesar empleador (puede venir con formato "NRO - NOMBRE")
-                    ProcessEmpleador(nombreEstablecimiento, ref row);
-
-                    // Si no se extrajo número de establecimiento del nombre, usar columna dedicada
-                    if (string.IsNullOrWhiteSpace(row.NroEstablecimiento))
-                    {
-                        row.NroEstablecimiento = nroEstablecimiento;
-                    }
+                    row.NroEstablecimiento = nroEstablecimiento;
+                    ProcessEstablecimiento(nombreEstablecimiento, ref row);
 
                     row.Telefono = GetField(csv, columnMap2, "Teléfono");
                     row.Cuil = GetField(csv, columnMap2, "CUIL");
@@ -441,21 +437,16 @@ public class CsvOrderParser
         return practicaSolicitada.Trim();
     }
 
-    private void ProcessEmpleador(string empleador, ref OutputRow row)
+    private void ProcessEstablecimiento(string establecimiento, ref OutputRow row)
     {
-        if (string.IsNullOrWhiteSpace(empleador))
+        if (string.IsNullOrWhiteSpace(establecimiento) || !string.IsNullOrWhiteSpace(row.NroEstablecimiento))
             return;
 
-        // Patrón: "NRO - NOMBRE"
-        var match = System.Text.RegularExpressions.Regex.Match(empleador, @"^(\d+)\s*-\s*(.+)$");
+        // Fallback para formatos que incrustan el número dentro del nombre del establecimiento.
+        var match = System.Text.RegularExpressions.Regex.Match(establecimiento, @"^(\d+)\s*-\s*(.+)$");
         if (match.Success)
         {
             row.NroEstablecimiento = match.Groups[1].Value;
-            row.Empleador = match.Groups[2].Value.Trim();
-        }
-        else
-        {
-            row.Empleador = empleador.Trim();
         }
     }
 }
