@@ -87,8 +87,9 @@ public class Normalizer
         }
 
         // Quitar código al inicio tipo "C06 - EXAMEN CLINICO" o "80004: ALGO".
-        // Dejamos solo el nombre de la prestación.
-        var codePrefixMatch = Regex.Match(normalized, @"^\s*[A-Z0-9]{2,10}\s*[-:]\s+(.+)$");
+        // Solo remover si el prefijo contiene al menos un dígito, para no cortar textos
+        // válidos como "METANOL - URINARIO" en una segunda pasada.
+        var codePrefixMatch = Regex.Match(normalized, @"^\s*(?=[A-Z0-9]{2,10}\s*[-:])(?=[A-Z0-9]*\d)[A-Z0-9]{2,10}\s*[-:]\s+(.+)$");
         if (codePrefixMatch.Success)
         {
             normalized = codePrefixMatch.Groups[1].Value.Trim();

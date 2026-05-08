@@ -716,8 +716,9 @@ public class XlsxOrderParser
             text = text.Substring(0, codMatch.Index).Trim();
         }
 
-        // Quitar prefijo de código: letras/números + '-' o ':' y luego el nombre
-        var prefixMatch = Regex.Match(text, @"^\s*[A-Z0-9]{2,10}\s*[-:]\s+(.+)$");
+        // Quitar prefijo de código solo si realmente parece código (debe contener dígitos),
+        // evitando cortar textos válidos como "METANOL - URINARIO".
+        var prefixMatch = Regex.Match(text, @"^\s*(?=[A-Z0-9]{2,10}\s*[-:])(?=[A-Z0-9]*\d)[A-Z0-9]{2,10}\s*[-:]\s+(.+)$");
         if (prefixMatch.Success)
         {
             text = prefixMatch.Groups[1].Value.Trim();
